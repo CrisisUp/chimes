@@ -1,291 +1,38 @@
 /**
  * Stage 02 — China cloth only (no country switchers, carousel, or Tweakpane).
+ * Physics primitives live in physics.js; this file only wires the stand-alone
+ * country as a still-pinned cloth that reacts to the pointer + chimes.
  */
-import { getPointID, smoothstep } from "./utils.js";
+import * as K from "./constants.js";
+import { getPointID } from "./utils.js";
 import { COUNTRIES, DEFAULT_COUNTRY, charForCell } from "./countries.js";
 import { chimes } from "./chimes.js";
+import {
+  Vec2,
+  Particle,
+  Constraint,
+  Input,
+  sizeCanvas
+} from "./physics.js";
 
-const AREA_W = 492;
-const AREA_H = 468;
-const STRINGS_PAD = 420;
-const DEFAULT_GRID_W = 36;
-const DEFAULT_GRID_H = 40;
+const AREA_W = K.AREA_W;
+const AREA_H = K.AREA_H;
+const STRINGS_PAD = K.STRINGS_PAD;
+const DEFAULT_GRID_W = K.DEFAULT_GRID_W;
+const DEFAULT_GRID_H = K.DEFAULT_GRID_H;
 
 const country = COUNTRIES[DEFAULT_COUNTRY] || COUNTRIES.china;
 
 const CONFIG = {
+  ...K.DEFAULT_PHYSICS,
   width: AREA_W,
   height: AREA_H,
   gridW: country.gridW ?? DEFAULT_GRID_W,
   gridH: country.gridH ?? DEFAULT_GRID_H,
-  gravity: 0.2,
-  damping: 0.99,
-  iterationsPerFrame: 5,
-  compressFactor: 0.02,
-  stretchFactor: 1.1,
-  mouseSize: 5000,
-  mouseStrength: 4,
   contain: false
 };
 
-const dpr = Math.min(2, window.devicePixelRatio || 1);
-
-function sizeCanvas(canvas, cssW, cssH) {
-  canvas.width = Math.round(cssW * dpr);
-  canvas.height = Math.round(cssH * dpr);
-  canvas.style.width = `${cssW}px`;
-  canvas.style.height = `${cssH}px`;
-}
-
-class Vec2 {
-  constructor(x = 0, y = 0) {
-    this.reset(x, y);
-  }
-  zero() {
-    this.reset(0, 0);
-  }
-  reset(x = 0, y = 0) {
-    this.x = x;
-    this.y = y;
-  }
-  clone() {
-    return new Vec2(this.x, this.y);
-  }
-  add(v) {
-    this.x += v.x;
-    this.y += v.y;
-    return this;
-  }
-  subtract(v) {
-    this.x -= v.x;
-    this.y -= v.y;
-    return this;
-  }
-  subtractNew(v) {
-    return this.clone().subtract(v);
-  }
-  scale(scalar) {
-    this.x *= scalar;
-    this.y *= scalar;
-    return this;
-  }
-  get lengthSquared() {
-    return this.x ** 2 + this.y ** 2;
-  }
-  get length() {
-    return Math.hypot(this.x, this.y);
-  }
-  get angle() {
-    return Math.atan2(this.y, this.x);
-  }
-  [Symbol.iterator]() {
-    const values = [this.x, this.y];
-    let i = 0;
-    return {
-      next() {
-        if (i < values.length) return { value: values[i++], done: false };
-        return { done: true };
-      }
-    };
-  }
-}
-
-class Particle {
-  constructor({ x, y, pinned, id, char } = {}) {
-    this.pos = new Vec2(x, y);
-    this.oldPos = new Vec2(x, y);
-    this.velocity = new Vec2();
-    this.acceleration = new Vec2();
-    this.pinned = pinned;
-    this.id = id;
-    this.char = char;
-    this.gravityVec = new Vec2();
-  }
-  contain() {
-    if (this.pinned) return;
-    const radius = 4;
-    if (this.pos.x < radius) {
-      this.pos.x = radius;
-      this.oldPos.x = this.pos.x + Math.abs(this.oldPos.x - this.pos.x) * 0.8;
-    } else if (this.pos.x > CONFIG.width - radius) {
-      this.pos.x = CONFIG.width - radius;
-      this.oldPos.x = this.pos.x - Math.abs(this.oldPos.x - this.pos.x) * 0.8;
-    }
-    if (this.pos.y < radius) {
-      this.pos.y = radius;
-      this.oldPos.y = this.pos.y + Math.abs(this.oldPos.y - this.pos.y) * 0.8;
-    } else if (this.pos.y > CONFIG.height - radius) {
-      this.pos.y = CONFIG.height - radius;
-      this.oldPos.y = this.pos.y - Math.abs(this.oldPos.y - this.pos.y) * 0.8;
-    }
-  }
-  update(delta) {
-    if (this.pinned) {
-      this.acceleration.zero();
-      return;
-    }
-    this.velocity.reset(
-      (this.pos.x - this.oldPos.x) * CONFIG.damping,
-      (this.pos.y - this.oldPos.y) * CONFIG.damping
-    );
-    this.oldPos.reset(...this.pos);
-    const dd = delta ** 2;
-    this.gravityVec.reset(0, CONFIG.gravity / dd);
-    this.applyForce(this.gravityVec);
-    this.pos.x += this.velocity.x + this.acceleration.x * dd;
-    this.pos.y += this.velocity.y + this.acceleration.y * dd;
-    this.acceleration.reset();
-  }
-  applyForce(v) {
-    this.acceleration.add(v);
-  }
-}
-
-class Constraint {
-  constructor({
-    p1,
-    p2,
-    length,
-    id,
-    compressFactor,
-    stretchFactor,
-    isSpacer = false
-  }) {
-    this.p1 = p1;
-    this.p2 = p2;
-    this.length = length;
-    this.id = id;
-    this.compressFactor = compressFactor;
-    this.stretchFactor = stretchFactor;
-    this.isSpacer = isSpacer;
-    this.minLength = length * compressFactor;
-    this.maxLength = length * stretchFactor;
-  }
-  solve() {
-    const dx = this.p2.pos.x - this.p1.pos.x;
-    const dy = this.p2.pos.y - this.p1.pos.y;
-    const distance = Math.hypot(dx, dy) || 0.0001;
-    let targetLength = this.length;
-    if (distance < this.minLength) targetLength = this.minLength;
-    else if (distance > this.maxLength) targetLength = this.maxLength;
-    else return;
-
-    const percent = (targetLength - distance) / distance / 2;
-    const offsetX = dx * percent;
-    const offsetY = dy * percent;
-
-    if (!this.p1.pinned) {
-      this.p1.pos.x -= offsetX;
-      this.p1.pos.y -= offsetY;
-    }
-    if (!this.p2.pinned) {
-      this.p2.pos.x += offsetX;
-      this.p2.pos.y += offsetY;
-    }
-  }
-}
-
-class Input {
-  constructor({ c, particles, originX, originY, canvasW, canvasH }) {
-    this.c = c;
-    this.particles = particles;
-    this.originX = originX;
-    this.originY = originY;
-    this.canvasW = canvasW;
-    this.canvasH = canvasH;
-    this.mousePos = new Vec2();
-    this.grabRadius = 24;
-    this.chimeRadiusSq = 55 * 55;
-    this.bind();
-  }
-  localPoint(e) {
-    const rect = this.c.getBoundingClientRect();
-    return {
-      x: ((e.clientX - rect.left) / rect.width) * this.canvasW - this.originX,
-      y: ((e.clientY - rect.top) / rect.height) * this.canvasH - this.originY
-    };
-  }
-  pointerdown(e) {
-    const { x, y } = this.localPoint(e);
-    this.mousePos.reset(x, y);
-    for (const p of this.particles) {
-      if (this.mousePos.subtractNew(p.pos).length < this.grabRadius) {
-        this.grabbedParticle = p;
-        this.grabbedParticle.originalPinnedState = this.grabbedParticle.pinned;
-        this.grabbedParticle.pinned = true;
-        chimes.strike({
-          x,
-          y,
-          particle: p,
-          gridW: CONFIG.gridW,
-          intensity: 0.85,
-          force: true
-        });
-        break;
-      }
-    }
-  }
-  pointerup() {
-    if (this.grabbedParticle) {
-      this.grabbedParticle.pinned = this.grabbedParticle.originalPinnedState;
-      this.grabbedParticle = null;
-    }
-  }
-  pointermove(e) {
-    const { x, y } = this.localPoint(e);
-    this.mousePos.reset(x, y);
-
-    if (this.grabbedParticle) {
-      this.grabbedParticle.pos.reset(x, y);
-      this.grabbedParticle.oldPos.reset(x, y);
-    }
-
-    let nearest = null;
-    let nearestLs = Infinity;
-
-    for (const p of this.particles) {
-      const diff = this.mousePos.subtractNew(p.pos);
-      const ls = diff.lengthSquared;
-      if (ls < CONFIG.mouseSize) {
-        const a = diff.angle - Math.PI;
-        const strength =
-          (smoothstep(CONFIG.mouseSize, -2000, ls) * CONFIG.mouseStrength) /
-          300;
-        p.applyForce(new Vec2(Math.cos(a) * strength, Math.sin(a) * strength));
-      }
-      if (ls < this.chimeRadiusSq && ls < nearestLs) {
-        nearest = p;
-        nearestLs = ls;
-      }
-    }
-
-    if (nearest) {
-      const closeness = 1 - nearestLs / this.chimeRadiusSq;
-      chimes.strike({
-        x,
-        y,
-        particle: nearest,
-        gridW: CONFIG.gridW,
-        intensity: 0.2 + closeness * 0.7
-      });
-    } else {
-      chimes.lastParticleId = -1;
-    }
-  }
-  contextmenu(e) {
-    e.preventDefault();
-  }
-  bind() {
-    this.pointerdown = this.pointerdown.bind(this);
-    this.pointerup = this.pointerup.bind(this);
-    this.pointermove = this.pointermove.bind(this);
-    this.contextmenu = this.contextmenu.bind(this);
-    document.addEventListener("pointerdown", this.pointerdown);
-    document.addEventListener("pointerup", this.pointerup);
-    document.addEventListener("pointermove", this.pointermove);
-    document.addEventListener("contextmenu", this.contextmenu);
-  }
-}
+const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
 
 function main() {
   const width = CONFIG.width;
@@ -298,8 +45,11 @@ function main() {
   const pad = STRINGS_PAD;
   const canvasW = AREA_W + pad * 2;
   const canvasH = AREA_H + pad * 2;
-  const fontSize = Math.max(9, Math.min(14, cellHeight * 0.95));
-  const roofClearance = Math.ceil(fontSize * 0.7);
+  const fontSize = Math.max(
+    K.FONT_SIZE_MIN,
+    Math.min(K.FONT_SIZE_MAX, cellHeight * K.CELL_TO_FONT_FACTOR)
+  );
+  const roofClearance = Math.ceil(fontSize * K.ROOF_OFFSET_FACTOR);
   const originX = pad + (AREA_W - width) / 2;
   const originY = pad + roofClearance;
 
@@ -308,7 +58,7 @@ function main() {
   const charCanvases = {};
   for (const ch of new Set(fullCode)) {
     if (ch === " " || ch === "　") continue;
-    const size = Math.ceil(fontSize * 1.35);
+    const size = Math.ceil(fontSize * K.CHAR_FACTOR);
     const off = document.createElement("canvas");
     off.width = Math.ceil(size * dpr);
     off.height = Math.ceil(size * dpr);
@@ -329,7 +79,7 @@ function main() {
   const c = document.createElement("canvas");
   root.innerHTML = "";
   root.appendChild(c);
-  sizeCanvas(c, canvasW, canvasH);
+  sizeCanvas(c, canvasW, canvasH, dpr);
   const ctx = c.getContext("2d");
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
@@ -337,7 +87,19 @@ function main() {
   const particles = [];
   const constraints = [];
   // eslint-disable-next-line no-new
-  new Input({ c, particles, originX, originY, canvasW, canvasH });
+  new Input({
+    c,
+    particles,
+    originX,
+    originY,
+    canvasW,
+    canvasH,
+    config: CONFIG,
+    onStrike: (opts) => {
+      if (opts) chimes.strike(opts);
+      else chimes.lastParticleId = -1;
+    }
+  });
 
   for (let i = 0; i < gridW; i++) {
     for (let j = 0; j < gridH; j++) {
@@ -346,7 +108,7 @@ function main() {
       const id = getPointID(j, i, gridH);
       const pinned = j === 0;
       const char = charForCell(fullCode, i, j, gridW, gridH, writing);
-      particles.push(new Particle({ x, y, pinned, id, char }));
+      particles.push(new Particle({ x, y, pinned, id, char, config: CONFIG }));
     }
   }
 
@@ -363,7 +125,8 @@ function main() {
           length: cellHeight,
           id: id + gridW * gridH,
           compressFactor,
-          stretchFactor
+          stretchFactor,
+          config: CONFIG
         });
         constraints.push(constraint);
         p.downConstraint = constraint;
@@ -377,9 +140,10 @@ function main() {
             p2: rightP,
             length: cellWidth,
             id: id + gridW * gridH * 2,
-            compressFactor: 0.6,
-            stretchFactor: 4,
-            isSpacer: true
+            compressFactor: K.SPACER_COMPRESS_FACTOR,
+            stretchFactor: K.SPACER_STRETCH_FACTOR,
+            isSpacer: true,
+            config: CONFIG
           })
         );
       }
@@ -422,7 +186,7 @@ function main() {
   let lastDelta = performance.now();
   function runloop(delta) {
     requestAnimationFrame(runloop);
-    const dt = Math.min(32, Math.max(1, delta - lastDelta));
+    const dt = Math.min(K.DT_MAX, Math.max(K.DT_MIN, delta - lastDelta));
     lastDelta = delta;
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);

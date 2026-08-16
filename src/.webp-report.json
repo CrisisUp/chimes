@@ -1,0 +1,15 @@
+{
+  "brazil": "2017x829 -> canvas 1258x518, img 1258x517, pad-top 1 (contain), 129448 B",
+  "china": "2048x2048 -> 1682x1682 (cover), 206428 B",
+  "france": "1691x805 -> canvas 1138x542, img 1138x542, pad-top 0 (contain), 98042 B",
+  "india": "1713x1172 -> canvas 1362x932, img 1362x932, pad-top 0 (contain), 241556 B",
+  "iran": "1993x724 -> canvas 1258x456, img 1255x456, pad-top 0 (contain), 97614 B",
+  "italy": "1454x1329 -> canvas 1094x1000, img 1094x1000, pad-top 0 (contain), 181276 B",
+  "japan": "2048x2048 -> 1268x1268 (cover), 43650 B",
+  "kazakhstan": "1024x500 -> canvas 1038x542, img 1024x500, pad-top 42 (contain), 79960 B",
+  "norway": "1920x727 -> canvas 1310x496, img 1310x496, pad-top 0 (contain), 186802 B",
+  "russia": "1024x490 -> canvas 1128x568, img 1024x490, pad-top 78 (contain), 98742 B",
+  "uk": "2048x1346 -> canvas 1250x822, img 1250x822, pad-top 0 (contain), 280944 B",
+  "usa": "1773x803 -> canvas 1258x570, img 1258x570, pad-top 0 (contain), 118602 B",
+  "vietnam": "2048x2048 -> 1352x1352 (cover), 147978 B"
+}

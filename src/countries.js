@@ -6,7 +6,7 @@ export const COUNTRIES = {
   vietnam: {
     id: "vietnam",
     name: "Vietnam",
-    roof: "./roof-vietnam.png",
+    roof: "./roof-vietnam.webp",
     buttonIcon: "./selector-vietnam.png",
     writing: "vertical",
     gridW: 62,
@@ -40,7 +40,7 @@ export const COUNTRIES = {
   china: {
     id: "china",
     name: "China",
-    roof: "./roof-china.png",
+    roof: "./roof-china.webp",
     buttonIcon: "./selector-china.png",
     writing: "vertical",
     eyebrowNative: "缘分",
@@ -73,7 +73,7 @@ export const COUNTRIES = {
   japan: {
     id: "japan",
     name: "Japan",
-    roof: "./roof-japan.png",
+    roof: "./roof-japan.webp",
     buttonIcon: "./selector-japan.png",
     writing: "vertical",
     eyebrowNative: "一期一会",
@@ -107,7 +107,7 @@ export const COUNTRIES = {
   kazakhstan: {
     id: "kazakhstan",
     name: "Kazakhstan",
-    roof: "./roof-kazakhstan.png",
+    roof: "./roof-kazakhstan.webp",
     buttonIcon: "./selector-kazakhstan.png",
     writing: "horizontal",
     gridW: 42,
@@ -143,7 +143,7 @@ export const COUNTRIES = {
   russia: {
     id: "russia",
     name: "Russia",
-    roof: "./roof-russia.png",
+    roof: "./roof-russia.webp",
     buttonIcon: "./selector-russia.png",
     writing: "horizontal",
     gridW: 40,
@@ -179,7 +179,7 @@ export const COUNTRIES = {
   france: {
     id: "france",
     name: "France",
-    roof: "./roof-france.png",
+    roof: "./roof-france.webp",
     buttonIcon: "./selector-france.png",
     writing: "horizontal",
     gridW: 42,
@@ -215,7 +215,7 @@ export const COUNTRIES = {
   india: {
     id: "india",
     name: "India",
-    roof: "./roof-india.png",
+    roof: "./roof-india.webp",
     buttonIcon: "./selector-india.png",
     writing: "horizontal",
     gridW: 40,
@@ -251,7 +251,7 @@ export const COUNTRIES = {
   uk: {
     id: "uk",
     name: "UK",
-    roof: "./roof-uk.png",
+    roof: "./roof-uk.webp",
     buttonIcon: "./selector-uk.png",
     writing: "horizontal",
     gridW: 42,
@@ -287,7 +287,7 @@ export const COUNTRIES = {
   norway: {
     id: "norway",
     name: "Norway",
-    roof: "./roof-norway.png",
+    roof: "./roof-norway.webp",
     buttonIcon: "./selector-norway.png",
     writing: "horizontal",
     gridW: 40,
@@ -323,7 +323,7 @@ export const COUNTRIES = {
   italy: {
     id: "italy",
     name: "Italy",
-    roof: "./roof-italy.png",
+    roof: "./roof-italy.webp",
     buttonIcon: "./selector-italy.png",
     writing: "horizontal",
     gridW: 42,
@@ -359,7 +359,7 @@ export const COUNTRIES = {
   usa: {
     id: "usa",
     name: "USA",
-    roof: "./roof-usa.png",
+    roof: "./roof-usa.webp",
     buttonIcon: "./selector-usa.png",
     writing: "horizontal",
     gridW: 42,
@@ -395,7 +395,7 @@ export const COUNTRIES = {
   brazil: {
     id: "brazil",
     name: "Brazil",
-    roof: "./roof-brazil.png",
+    roof: "./roof-brazil.webp",
     buttonIcon: "./selector-brazil.png",
     writing: "horizontal",
     gridW: 42,
@@ -431,7 +431,7 @@ export const COUNTRIES = {
   iran: {
     id: "iran",
     name: "Iran",
-    roof: "./roof-iran.png",
+    roof: "./roof-iran.webp",
     buttonIcon: "./selector-iran.png",
     writing: "horizontal",
     gridW: 40,

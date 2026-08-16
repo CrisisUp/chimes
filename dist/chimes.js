@@ -15,6 +15,7 @@
  *  - Brazil → warm mid bronze / festa ring
  *  - Iran → deep courtyard / metallic windcatcher hum
  */
+import * as K from "./constants.js";
 
 /** @typedef {{ freqs: number[], partials: { ratio: number, gain: number }[], duration: number, attack: number, peak: number, droop: number, noiseDur: number, noiseGain: number, noiseQ: number, noiseMul: number, shelfHz: number, shelfGain: number, minIntervalMs: number }} ChimeProfile */
 
@@ -316,7 +317,7 @@ export class StringChimes {
     this.master = null;
     this.shelf = null;
     this.enabled = true;
-    this.volume = 0.28;
+    this.volume = K.DEFAULT_CHIME_VOLUME;
     this.countryId = "china";
     this.profile = FALLBACK;
     this.lastStrikeAt = 0;

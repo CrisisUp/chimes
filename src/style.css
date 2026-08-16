@@ -48,7 +48,7 @@ body {
 }
 
 body {
-  background: #e8dfd0 url("./bg.png") center / cover no-repeat;
+  background: #e8dfd0 url("./bg.webp") center / cover no-repeat;
   color: var(--ink);
   font-family: var(--mono);
   user-select: none;
@@ -203,8 +203,8 @@ body {
 .country-btn {
   position: absolute;
   z-index: 15;
-  /* Figma 609:6644 / 608:6641 — y:279 on 1600×900 */
-  top: calc(279 / 900 * 100%);
+  /* Figma 609:6644 / 608:6641 — y:279 on 1600×900; moved up to 200 to clear cloth */
+  top: calc(200 / 900 * 100%);
   width: 80px;
   height: 80px;
   padding: 4px;
@@ -259,6 +259,14 @@ body {
 
 .country-btn--right {
   right: var(--pad-x);
+}
+
+/* Mobile: move side buttons below the cloth area so they don't overlap */
+@media (max-width: 960px) {
+  .country-btn {
+    top: auto;
+    bottom: calc(var(--pad-bottom) + 220px); /* above bottom copy, below cloth */
+  }
 }
 
 .country-btn__icon {
@@ -665,6 +673,8 @@ body {
   gap: 32px;
   flex-shrink: 1;
   min-width: 0;
+  /* Reserve space for aside-block on the right */
+  margin-right: 240px;
 }
 
 .eyebrow {
@@ -1509,6 +1519,106 @@ body {
 .carousel__item[data-country="iran"] .roof img {
   object-fit: contain;
   object-position: center bottom;
+}
+
+/* ── Carousel loading spinner ───────────────────────────────────────────── */
+.carousel__loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  pointer-events: none;
+  color: var(--ink-muted);
+}
+
+.carousel__loading .spinner {
+  width: 48px;
+  height: 48px;
+  animation: carousel-spin 1s linear infinite;
+}
+
+@keyframes carousel-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ── Carousel drag hint ─────────────────────────────────────────────────── */
+.carousel__drag-hint {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--area-h) + 24px);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(58, 45, 42, 0.9);
+  color: #f6ecda;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  white-space: nowrap;
+  border-radius: 999px;
+  z-index: 10;
+  pointer-events: none;
+  opacity: 1;
+  animation: carousel-hint-in 0.3s ease-out;
+}
+
+.carousel__drag-hint svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.carousel__drag-hint.fade-out {
+  animation: carousel-hint-out 0.4s ease-in forwards;
+}
+
+@keyframes carousel-hint-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+@keyframes carousel-hint-out {
+  from { opacity: 1; transform: translateX(-50%) translateY(0); }
+  to { opacity: 0; transform: translateX(-50%) translateY(-8px); }
+}
+
+/* Mobile: hint closer to the carousel */
+@media (max-width: 960px) {
+  .carousel__drag-hint {
+    bottom: calc(var(--area-h) + 12px);
+    font-size: 0.75rem;
+    padding: 6px 12px;
+  }
+
+  /* Mobile: heading uses full width, no margin for aside */
+  .heading {
+    margin-right: 0;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  /* Mobile: aside-block below heading, full width */
+  .aside-block {
+    width: 100%;
+    max-width: 100%;
+    margin-left: 0;
+    align-items: stretch;
+  }
+
+  .aside-actions {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .mobile-tabs {
+    display: flex;
+    gap: 12px;
+    flex: 1;
+  }
 }
 
 /* Configure panel — Budarina parchment / ink (not default Tweakpane chrome) */
