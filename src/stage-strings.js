@@ -3,7 +3,7 @@
  * Physics primitives live in physics.js; this file only wires the stand-alone
  * country as a still-pinned cloth that reacts to the pointer + chimes.
  */
-import * as K from "./constants.js";
+import * as K from "./modules/constants.js";
 import { getPointID } from "./utils.js";
 import { COUNTRIES, DEFAULT_COUNTRY, charForCell } from "./countries.js";
 import { chimes } from "./chimes.js";

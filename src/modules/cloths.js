@@ -4,9 +4,9 @@
  * CONFIG-style settings, differ in geometry/clime behaviour.
  */
 import * as K from "./constants.js";
-import { Vec2, sizeCanvas } from "./physics.js";
-import { chimes } from "./chimes.js";
-import { smoothstep } from "./utils.js";
+import { Vec2, sizeCanvas } from "../physics.js";
+import { chimes } from "../chimes.js";
+import { smoothstep } from "../utils.js";
 import {
   SERIF_FONT,
   rasterizeChars,

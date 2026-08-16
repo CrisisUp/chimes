@@ -1,0 +1,20 @@
+{
+  "name": "chimes",
+  "version": "1.0.0",
+  "description": "Interactive string-cloth portfolio by Marina Budarina",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "node --check src/script.js && node --check src/stage-strings.js && node --check src/physics.js && node --check src/chimes.js && node --check src/modules/constants.js && node --check src/modules/cloth-common.js && node --check src/modules/cloths.js && node --check src/modules/carousel.js && node --check src/modules/contributions-view.js && node --check src/modules/copy.js",
+    "verify": "npm run check && sha256sum public/*.js public/*.css public/index.html | sort",
+    "clean": "rm -rf public"
+  },
+  "devDependencies": {
+    "vite": "^5.4.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

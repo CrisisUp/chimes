@@ -41,7 +41,7 @@ export function initContributionsView({ isAboutOpen, setAboutOpen }) {
   function ensureApi() {
     if (api) return Promise.resolve(api);
     if (!apiPromise) {
-      apiPromise = import("./contributions.js?v=seed-1")
+      apiPromise = import("../contributions.js?v=seed-1")
         .then((mod) => {
           api = mod;
           return mod;

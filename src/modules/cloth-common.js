@@ -4,9 +4,9 @@
  * scaling lives here so callers only pass the already-resolved `dpr`.
  */
 import * as K from "./constants.js";
-import { getPointID } from "./utils.js";
-import { charForCell } from "./countries.js";
-import { Particle, Constraint } from "./physics.js";
+import { getPointID } from "../utils.js";
+import { charForCell } from "../countries.js";
+import { Particle, Constraint } from "../physics.js";
 
 export const SERIF_FONT =
   '"Songti SC", "STSong", "Noto Serif SC", "Hiragino Mincho ProN", serif';

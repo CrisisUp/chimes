@@ -6,3 +6,7 @@ node_modules/
 .env
 .ENV
 *.pem
+public/
+dist/
+docs/
+*.webp-report.json

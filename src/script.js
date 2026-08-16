@@ -2,12 +2,12 @@
  * Budarina — interactive string-cloth portfolio.
  * Main orchestrator: boots the home cloth, Tweakpane, country navigation,
  * modal About, carousel destinations, contributions view, and responsive layout.
- * All cloth factories live in ./cloths.js; shared helpers in ./cloth-common.js;
- * copy helpers in ./copy.js; carousel logic in ./carousel.js; contributions
- * wiring in ./contributions-view.js.
+ * All cloth factories live in ./modules/cloths.js; shared helpers in ./modules/cloth-common.js;
+ * copy helpers in ./modules/copy.js; carousel logic in ./modules/carousel.js; contributions
+ * wiring in ./modules/contributions-view.js.
  */
 import { Pane } from "https://cdn.jsdelivr.net/npm/tweakpane@4.0.5/dist/tweakpane.min.js";
-import * as K from "./constants.js";
+import * as K from "./modules/constants.js";
 import { getPointID } from "./utils.js";
 import {
   COUNTRIES,
@@ -23,11 +23,11 @@ import {
   Input,
   sizeCanvas
 } from "./physics.js";
-import { escapeHtml, splitTitleChars, applyCountryCopy, copyEnterDuration } from "./copy.js";
-import { SERIF_FONT, rasterizeChars, buildHangingGrid, clearAndDrawCloth, clothLocalPoint } from "./cloth-common.js";
-import { createCarouselCloth } from "./cloths.js";
-import { initCarousel } from "./carousel.js";
-import { initContributionsView } from "./contributions-view.js";
+import { escapeHtml, splitTitleChars, applyCountryCopy, copyEnterDuration } from "./modules/copy.js";
+import { SERIF_FONT, rasterizeChars, buildHangingGrid, clearAndDrawCloth, clothLocalPoint } from "./modules/cloth-common.js";
+import { createCarouselCloth } from "./modules/cloths.js";
+import { initCarousel } from "./modules/carousel.js";
+import { initContributionsView } from "./modules/contributions-view.js";
 
 const STORAGE_KEY = "budarina-country";
 

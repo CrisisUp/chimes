@@ -15,7 +15,7 @@
  *  - `onStrike`   (Input) — called with the chime options when a particle is
  *    grabbed / brushed, or with `null` when the pointer leaves the chime ring.
  */
-import * as K from "./constants.js";
+import * as K from "./modules/constants.js";
 
 export function sizeCanvas(canvas, cssW, cssH, dpr) {
   canvas.width = Math.round(cssW * dpr);

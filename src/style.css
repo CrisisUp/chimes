@@ -29,7 +29,7 @@
 
 @font-face {
   font-family: "PP Eiko";
-  src: url("./fonts/PPEiko-Medium.otf") format("opentype");
+  src: url("./assets/fonts/PPEiko-Medium.otf") format("opentype");
   font-weight: 500;
   font-style: normal;
   font-display: swap;
@@ -48,7 +48,7 @@ body {
 }
 
 body {
-  background: #e8dfd0 url("./bg.webp") center / cover no-repeat;
+  background: #e8dfd0 url("./assets/bg.webp") center / cover no-repeat;
   color: var(--ink);
   font-family: var(--mono);
   user-select: none;
@@ -169,7 +169,7 @@ body {
   height: 36px;
   padding: 0;
   /* Wavy dark SVG from Figma 615:6816 — shape only; label is HTML (PP Eiko) */
-  background: transparent url("./configure-btn.svg") center / 100% 100% no-repeat;
+  background: transparent url("./assets/configure-btn.svg") center / 100% 100% no-repeat;
   color: #fff;
   font-family: var(--display);
   font-size: 16px;
@@ -216,7 +216,7 @@ body {
   appearance: none;
   background-color: transparent;
   /* Wavy ink frame (Figma 615:6824 / 615:6827), not a hard box */
-  background-image: url("./selector-frame.svg");
+  background-image: url("./assets/selector-frame.svg");
   background-repeat: no-repeat;
   background-position: center;
   background-size: 84px 84px;
