@@ -48,7 +48,7 @@ body {
 }
 
 body {
-  background: #e8dfd0 url("./bg.png") center / cover no-repeat;
+  background: #e8dfd0 url("./bg.webp") center / cover no-repeat;
   color: var(--ink);
   font-family: var(--mono);
   user-select: none;
@@ -2082,4 +2082,29 @@ body {
 .menu a[aria-disabled="true"] {
   pointer-events: none;
   opacity: 0.45;
+}
+
+/* ─── Reduced motion — respect OS accessibility setting ─── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .scene,
+  .carousel__track,
+  .carousel__item,
+  .char,
+  .bottom-copy {
+    transform: none !important;
+  }
+
+  .stage,
+  .destinations,
+  .carousel {
+    scroll-behavior: auto;
+  }
 }
