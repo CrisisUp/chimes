@@ -9,9 +9,6 @@
 import { charForCell } from "./countries.js";
 import { smoothstep } from "./utils.js";
 
-export const CHAR_PAD = 420; // canvas pad around the grid so sway isn't clipped
-export const CHAR_PAD_CONTRIB = 56; // narrower pad for the contributions stage
-
 const SPACER_COMPRESS = 0.6;
 const SPACER_STRETCH = 4;
 const INK = "#2a2620";

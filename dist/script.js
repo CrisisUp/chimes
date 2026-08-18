@@ -931,12 +931,12 @@ function createCarouselCloth(host, country) {
       font: country.font || FALLBACK_FONT,
       dpr,
       config: {
+        ...CONFIG,
         width: AREA_W,
         height: AREA_H,
         gridW: country.gridW ?? DEFAULT_GRID_W,
         gridH,
-        contain: false,
-        ...CONFIG
+        contain: false
       },
       reducedMotion: prefersReducedMotion,
       physicsOverrides: { iterations: 4, settleFrames: 70 },
@@ -985,12 +985,12 @@ function createContributionsCloth(host, names, cssW, cssH, gridFn) {
       font: grid.font,
       dpr,
       config: {
+        ...CONFIG,
         width,
         height,
         gridW: grid.gridW,
         gridH: grid.gridH,
-        contain: false,
-        ...CONFIG
+        contain: false
       },
       reducedMotion: prefersReducedMotion,
       physicsOverrides: { iterations: 4, settleFrames: 70 },
