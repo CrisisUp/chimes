@@ -957,10 +957,8 @@ function createCarouselCloth(host, country) {
 
   return {
     countryId: country.id,
-    canvas: cloth.canvas,
     tick: cloth.tick,
     brush: cloth.brush,
-    containsPoint: cloth.containsPoint,
     setActive: cloth.setActive
   };
 }
@@ -1016,6 +1014,8 @@ function initCarousel() {
   const n = COUNTRY_ORDER.length;
   const items = [];
   const cloths = [];
+  // country id → its item element + cloth, for hit-testing which item is on top.
+  const clothByCountry = new Map();
 
   track.innerHTML = "";
   COUNTRY_ORDER.forEach((id) => {
@@ -1046,6 +1046,7 @@ function initCarousel() {
     );
     if (cloth) cloths.push(cloth);
     items.push(el);
+    clothByCountry.set(id, { el, cloth });
   });
 
   let index = COUNTRY_ORDER.indexOf(currentCountryId);
@@ -1157,16 +1158,16 @@ function initCarousel() {
 
   function brushFromEvent(e) {
     if (!isDestinationsView() || moved) return;
-    for (let i = cloths.length - 1; i >= 0; i--) {
-      const cloth = cloths[i];
-      if (!cloth) continue;
-      const d = Math.abs(wrapDelta(i - index));
-      if (d > CAROUSEL_HIDE_DIST) continue;
-      if (cloth.containsPoint(e.clientX, e.clientY)) {
-        cloth.brush(e.clientX, e.clientY);
-        return;
-      }
-    }
+    // Which country's cloth is visually UNDER the cursor decides. The raw
+    // canvas bounds overlap heavily (a centered cloth's wide canvas covers the
+    // side items), so a bounds loop would always hand the hit to the center.
+    const hit = document
+      .elementFromPoint(e.clientX, e.clientY)
+      ?.closest?.(".carousel__item");
+    if (!hit) return;
+    const entry = clothByCountry.get(hit.dataset.country);
+    if (!entry?.cloth) return;
+    entry.cloth.brush(e.clientX, e.clientY);
   }
 
   function onPointerDown(e) {
