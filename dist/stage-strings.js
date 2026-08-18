@@ -1,8 +1,12 @@
 /**
  * Stage 02 — China cloth only (no country switchers, carousel, or Tweakpane).
  */
-import { createCloth } from "./cloth.js";
-import { COUNTRIES, DEFAULT_COUNTRY } from "./countries.js";
+import {
+  clampFontSize,
+  clothConfigFor,
+  makeChimeHandler
+} from "./cloth.js";
+import { COUNTRIES, DEFAULT_COUNTRY, FALLBACK_FONT } from "./countries.js";
 import { chimes } from "./chimes.js";
 
 const AREA_W = 492;
@@ -32,42 +36,27 @@ const dpr = Math.min(2, window.devicePixelRatio || 1);
 
 const root = document.getElementById("container");
 const pad = STRINGS_PAD;
-const fontSize = Math.max(9, Math.min(14, CONFIG.height / (CONFIG.gridH - 1) * 0.95));
+const fontSize = clampFontSize(CONFIG.height / (CONFIG.gridH - 1) * 0.95);
 
-const cloth = createCloth({
-  host: root,
-  text: country.cloth,
-  writing: country.writing || "horizontal",
-  width: CONFIG.width,
-  height: CONFIG.height,
-  gridW: CONFIG.gridW,
-  gridH: CONFIG.gridH,
-  pad,
-  fontSize,
-  originX: pad + (AREA_W - CONFIG.width) / 2,
-  originY: pad + Math.ceil(fontSize * 0.7),
-  font:
-    country.font ||
-    '"Songti SC", "STSong", "Noto Serif SC", "Hiragino Mincho ProN", serif',
-  dpr,
-  gravity: CONFIG.gravity,
-  damping: CONFIG.damping,
-  iterations: CONFIG.iterationsPerFrame,
-  compressFactor: CONFIG.compressFactor,
-  stretchFactor: CONFIG.stretchFactor,
-  contain: CONFIG.contain,
-  mouseSize: CONFIG.mouseSize,
-  mouseStrength: CONFIG.mouseStrength,
-  mode: "interact",
-  settleFrames: 0,
-  onChime: ({ x, y, particle, gridW: g, intensity, force, reset }) => {
-    if (!reset) {
-      chimes.strike({ x, y, particle, gridW: g, intensity, force });
-    } else {
-      chimes.lastParticleId = -1;
-    }
-  }
-});
+// Reduced motion: settle the cloth instantly instead of driving gravity.
+const reducedMotionQuery = window.matchMedia?.("(prefers-reduced-motion: reduce)");
+const prefersReducedMotion = reducedMotionQuery?.matches ?? false;
+
+const { cloth } = createCloth(
+  clothConfigFor({
+    host: root,
+    country,
+    area: { width: AREA_W, height: AREA_H },
+    pad,
+    fontSize,
+    font: country.font || FALLBACK_FONT,
+    dpr,
+    config: CONFIG,
+    reducedMotion: prefersReducedMotion,
+    mode: "interact",
+    chimeHandler: makeChimeHandler(chimes)
+  })
+);
 
 chimes.setCountry(country.id);
 

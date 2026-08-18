@@ -1,9 +1,15 @@
 import { Pane } from "https://cdn.jsdelivr.net/npm/tweakpane@4.0.5/dist/tweakpane.min.js";
-import { createCloth } from "./cloth.js";
+import {
+  clampFontSize,
+  clothConfigFor,
+  createCloth,
+  makeChimeHandler
+} from "./cloth.js";
 import {
   COUNTRIES,
   COUNTRY_ORDER,
   DEFAULT_COUNTRY,
+  FALLBACK_FONT,
   neighborsOf
 } from "./countries.js";
 import { chimes } from "./chimes.js";
@@ -202,6 +208,12 @@ function setCountryImmediate(id) {
 async function transitionTo(id, direction) {
   if (!COUNTRIES[id] || id === currentCountryId || transitioning) return;
 
+  // Respect reduced motion
+  if (prefersReducedMotion) {
+    setCountryImmediate(id);
+    return;
+  }
+
   transitioning = true;
   updateSideButtons();
 
@@ -262,24 +274,22 @@ async function transitionTo(id, direction) {
 
 function setCountry(id, opts = {}) {
   if (!COUNTRIES[id]) return;
-  const reducedMotion =
-    window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
   if (
     opts.animate === false ||
     id === currentCountryId ||
-    reducedMotion
+    prefersReducedMotion
   ) {
     setCountryImmediate(id);
     return;
   }
   const from = COUNTRY_ORDER_INDEX(currentCountryId);
   const to = COUNTRY_ORDER_INDEX(id);
-  // Prefer explicit direction; otherwise infer from order
+  // Prefer explicit direction; otherwise infer the shortest way around the ring
   let direction = opts.direction;
   if (direction == null) {
     if (from < 0 || to < 0) direction = 1;
     else {
-      const n = 3;
+      const n = COUNTRY_ORDER.length;
       const forward = (to - from + n) % n;
       const backward = (from - to + n) % n;
       direction = forward <= backward ? 1 : -1;
@@ -477,11 +487,23 @@ function setAboutOpen(open) {
     aboutBtn?.setAttribute("aria-expanded", "true");
     const closeBtn = document.getElementById("aboutClose");
     (closeBtn || aboutModal).focus?.();
+    // Focus trap
+    requestAnimationFrame(() => {
+      const focusable = aboutModal.querySelectorAll(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusable.length) {
+        aboutModal._firstFocusable = focusable[0];
+        aboutModal._lastFocusable = focusable[focusable.length - 1];
+      }
+    });
   } else {
     aboutModal.hidden = true;
     aboutModal.setAttribute("hidden", "");
     aboutModal.setAttribute("aria-hidden", "true");
     aboutBtn?.setAttribute("aria-expanded", "false");
+    aboutModal._firstFocusable = null;
+    aboutModal._lastFocusable = null;
     const restore = aboutLastFocus;
     aboutLastFocus = null;
     if (restore && typeof restore.focus === "function") {
@@ -647,6 +669,21 @@ if (contributionsClothHost && typeof ResizeObserver !== "undefined") {
 }
 
 window.addEventListener("keydown", (e) => {
+  // Focus trap for About modal
+  if (isAboutOpen() && e.key === "Tab") {
+    const first = aboutModal._firstFocusable;
+    const last = aboutModal._lastFocusable;
+    if (first && last) {
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+  }
+
   if (e.key === "`") setPaneOpen(pane.hidden);
   if (e.key === "Escape") {
     if (isAboutOpen()) {
@@ -674,48 +711,45 @@ function isPaneEvent(e) {
 let homeCloth = null;
 const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
 
+// Reduced motion detection
+const reducedMotionQuery = window.matchMedia?.("(prefers-reduced-motion: reduce)");
+let prefersReducedMotion = reducedMotionQuery?.matches ?? false;
+
+if (reducedMotionQuery?.addEventListener) {
+  reducedMotionQuery.addEventListener("change", (e) => {
+    prefersReducedMotion = e.matches;
+    // Re-render cloths with new setting (home, carousel, contributions)
+    refreshCloths();
+  });
+}
+
+function refreshCloths() {
+  rerender();
+  carousel?.layout();
+  refreshContributionsCloth();
+}
+
 function main() {
   const country = getCountry();
-  const { gridW, gridH } = CONFIG;
-  const cellHeight = CONFIG.height / (gridH - 1);
-  const pad = STRINGS_PAD;
-  const fontSize = Math.max(9, Math.min(14, cellHeight * 0.95));
 
-  homeCloth = createCloth({
-    host: document.getElementById("container"),
-    text: country.cloth,
-    writing: country.writing || "horizontal",
-    width: CONFIG.width,
-    height: CONFIG.height,
-    gridW,
-    gridH,
-    pad,
-    fontSize,
-    originX: pad + (AREA_W - CONFIG.width) / 2,
-    originY: pad + Math.ceil(fontSize * 0.7),
-    font:
-      country.font ||
-      '"Songti SC", "STSong", "Noto Serif SC", "Hiragino Mincho ProN", serif',
-    dpr,
-    gravity: CONFIG.gravity,
-    damping: CONFIG.damping,
-    iterations: CONFIG.iterationsPerFrame,
-    compressFactor: CONFIG.compressFactor,
-    stretchFactor: CONFIG.stretchFactor,
-    contain: CONFIG.contain,
-    mouseSize: CONFIG.mouseSize,
-    mouseStrength: CONFIG.mouseStrength,
-    mode: "interact",
-    settleFrames: 0,
-    onPointerGuard: isPaneEvent,
-    onChime: ({ x, y, particle, gridW: g, intensity, force, reset }) => {
-      if (!reset) {
-        chimes.strike({ x, y, particle, gridW: g, intensity, force });
-      } else {
-        chimes.lastParticleId = -1;
-      }
-    }
-  });
+  homeCloth = createCloth(
+    clothConfigFor({
+      host: document.getElementById("container"),
+      country,
+      area: { width: AREA_W, height: AREA_H },
+      pad: STRINGS_PAD,
+      fontSize: clampFontSize(
+        (CONFIG.height / (CONFIG.gridH - 1)) * 0.95
+      ),
+      font: country.font || FALLBACK_FONT,
+      dpr,
+      config: CONFIG,
+      reducedMotion: prefersReducedMotion,
+      mode: "interact",
+      onPointerGuard: isPaneEvent,
+      chimeHandler: makeChimeHandler(chimes)
+    })
+  );
 }
 
 
@@ -740,6 +774,18 @@ function initViews() {
       if (centered && centered !== currentCountryId) {
         setCountry(centered, { animate: false });
       }
+    }
+
+    // Pause/resume home cloth simulation
+    if (prev === "home" && next !== "home") {
+      if (homeSimRaf) {
+        cancelAnimationFrame(homeSimRaf);
+        homeSimRaf = 0;
+      }
+    }
+    if (next === "home" && prev !== "home") {
+      lastHomeSim = performance.now();
+      homeSimRaf = requestAnimationFrame(homeSimLoop);
     }
 
     if (prev === "contributions" && next !== "contributions") {
@@ -792,14 +838,14 @@ function initViews() {
 }
 
 /** Mobile: pin home area a fixed gap above the eyebrow. */
-const AREA_COPY_GAP_PX = 64;
+const AREA_COPY_GAP_PX = 72;
 
 function layoutAreaAboveCopy() {
   const stage = document.getElementById("stage");
   const area = document.getElementById("area");
-  const eyebrow = document.querySelector(".eyebrow");
+  const bottomCopy = document.getElementById("bottomCopy");
   const carouselVp = document.getElementById("carouselViewport");
-  if (!stage || !area || !eyebrow) return;
+  if (!stage || !area || !bottomCopy) return;
 
   const mobile = window.matchMedia("(max-width: 960px)").matches;
   if (!mobile) {
@@ -824,9 +870,10 @@ function layoutAreaAboveCopy() {
   }
 
   const stageRect = stage.getBoundingClientRect();
-  const eyebrowTop = eyebrow.getBoundingClientRect().top - stageRect.top;
+  // Use bottom-copy bottom edge (includes heading + aside-block)
+  const copyBottom = bottomCopy.getBoundingClientRect().bottom - stageRect.top;
   // CSS `bottom` = distance from stage bottom to the area’s bottom edge
-  const bottom = Math.max(0, stageRect.height - eyebrowTop + AREA_COPY_GAP_PX);
+  const bottom = Math.max(0, stageRect.height - copyBottom + AREA_COPY_GAP_PX);
   area.style.top = "auto";
   area.style.bottom = `${bottom}px`;
   if (carouselVp && stage.dataset.view !== "destinations") {
@@ -840,9 +887,9 @@ function bindAreaCopyLayout() {
   run();
   window.addEventListener("resize", run);
   window.addEventListener("orientationchange", run);
-  const copy = document.getElementById("bottomCopy");
-  if (copy && typeof ResizeObserver !== "undefined") {
-    new ResizeObserver(run).observe(copy);
+  const bottomCopy = document.getElementById("bottomCopy");
+  if (bottomCopy && typeof ResizeObserver !== "undefined") {
+    new ResizeObserver(run).observe(bottomCopy);
   }
   document.fonts?.ready?.then?.(run);
 }
@@ -871,37 +918,35 @@ let carousel = null;
 function createCarouselCloth(host, country) {
   if (!host || !country) return null;
 
-  const gridW = country.gridW ?? DEFAULT_GRID_W;
   const gridH = country.gridH ?? DEFAULT_GRID_H;
-  const width = AREA_W;
-  const height = AREA_H;
-  const pad = STRINGS_PAD;
-  const cellHeight = height / (gridH - 1);
-  const fontSize = Math.max(9, Math.min(14, cellHeight * 0.95));
+  const fontSize = clampFontSize((AREA_H / (gridH - 1)) * 0.95);
 
-  const cloth = createCloth({
-    host,
-    text: country.cloth || "",
-    writing: country.writing || "horizontal",
-    width,
-    height,
-    gridW,
-    gridH,
-    pad,
-    fontSize,
-    originX: pad + (AREA_W - width) / 2,
-    originY: pad + Math.ceil(fontSize * 0.7),
-    font:
-      country.font ||
-      '"Songti SC", "STSong", "Noto Serif SC", "Hiragino Mincho ProN", serif',
-    dpr,
-    iterations: 4,
-    settleFrames: 70,
-    onChime: ({ x, y, particle, gridW: g, intensity }) => {
-      chimes.setCountry(country.id);
-      chimes.strike({ x, y, particle, gridW: g, intensity });
-    }
-  });
+  const cloth = createCloth(
+    clothConfigFor({
+      host,
+      country,
+      area: { width: AREA_W, height: AREA_H },
+      pad: STRINGS_PAD,
+      fontSize,
+      font: country.font || FALLBACK_FONT,
+      dpr,
+      config: {
+        width: AREA_W,
+        height: AREA_H,
+        gridW: country.gridW ?? DEFAULT_GRID_W,
+        gridH,
+        contain: false,
+        ...CONFIG
+      },
+      reducedMotion: prefersReducedMotion,
+      physicsOverrides: { iterations: 4, settleFrames: 70 },
+      mode: "simulate",
+      chimeHandler: ({ x, y, particle, gridW: g, intensity }) => {
+        chimes.setCountry(country.id);
+        chimes.strike({ x, y, particle, gridW: g, intensity });
+      }
+    })
+  );
 
   return {
     countryId: country.id,
@@ -924,32 +969,36 @@ function createContributionsCloth(host, names, cssW, cssH, gridFn) {
   const height = Math.max(80, cssH);
   const pad = 56;
   const grid = (gridFn || CONTRIB_FALLBACK.contributionsGrid)(names, width);
-  const gridW = grid.gridW;
-  const gridH = grid.gridH;
-  const cellWidth = width / Math.max(1, gridW - 1);
-  const cellHeight = height / Math.max(1, gridH - 1);
-  const fontSize = Math.max(
-    9,
-    Math.min(14, Math.min(cellWidth * 0.95, cellHeight * 0.85))
+  const cellWidth = width / Math.max(1, grid.gridW - 1);
+  const cellHeight = height / Math.max(1, grid.gridH - 1);
+  const fontSize = clampFontSize(
+    Math.min(cellWidth * 0.95, cellHeight * 0.85)
   );
 
-  return createCloth({
-    host,
-    text: grid.cloth,
-    writing: grid.writing || "horizontal",
-    width,
-    height,
-    gridW,
-    gridH,
-    pad,
-    fontSize,
-    originX: pad,
-    originY: pad + Math.ceil(fontSize * 0.35),
-    font: grid.font,
-    dpr,
-    iterations: 4,
-    settleFrames: 70
-  });
+  return createCloth(
+    clothConfigFor({
+      host,
+      country: { cloth: grid.cloth, writing: grid.writing || "horizontal" },
+      area: { width, height },
+      pad,
+      fontSize,
+      font: grid.font,
+      dpr,
+      config: {
+        width,
+        height,
+        gridW: grid.gridW,
+        gridH: grid.gridH,
+        contain: false,
+        ...CONFIG
+      },
+      reducedMotion: prefersReducedMotion,
+      physicsOverrides: { iterations: 4, settleFrames: 70 },
+      mode: "simulate",
+      originX: pad,
+      originY: pad + Math.ceil(fontSize * 0.35)
+    })
+  );
 }
 
 function initCarousel() {
@@ -1051,6 +1100,15 @@ function initCarousel() {
 
   function animateTo(target, duration = CAROUSEL_SNAP_MS) {
     cancelAnimationFrame(animRaf);
+    // Respect reduced motion
+    if (prefersReducedMotion) {
+      let delta = wrapDelta(target - index);
+      const from = index;
+      const to = from + delta;
+      index = nearestIndex(to);
+      layout();
+      return;
+    }
     let delta = wrapDelta(target - index);
     const from = index;
     const to = from + delta;
@@ -1254,6 +1312,17 @@ updateSideButtons();
 initCarousel();
 initViews();
 bindAreaCopyLayout();
+
+/* ─── Home cloth simulation loop (settle + hover sway) ─── */
+let homeSimRaf = 0;
+let lastHomeSim = performance.now();
+function homeSimLoop(now) {
+  homeSimRaf = requestAnimationFrame(homeSimLoop);
+  const dt = Math.min(32, Math.max(1, now - lastHomeSim));
+  lastHomeSim = now;
+  if (homeCloth) homeCloth.tick(dt);
+}
+homeSimRaf = requestAnimationFrame(homeSimLoop);
 
 document.getElementById("btnLeft")?.addEventListener("click", () => {
   const id = document.getElementById("btnLeft")?.dataset.country;

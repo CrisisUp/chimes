@@ -1,9 +1,15 @@
 import { Pane } from "https://cdn.jsdelivr.net/npm/tweakpane@4.0.5/dist/tweakpane.min.js";
-import { createCloth } from "./cloth.js";
+import {
+  clampFontSize,
+  clothConfigFor,
+  createCloth,
+  makeChimeHandler
+} from "./cloth.js";
 import {
   COUNTRIES,
   COUNTRY_ORDER,
   DEFAULT_COUNTRY,
+  FALLBACK_FONT,
   neighborsOf
 } from "./countries.js";
 import { chimes } from "./chimes.js";
@@ -278,12 +284,12 @@ function setCountry(id, opts = {}) {
   }
   const from = COUNTRY_ORDER_INDEX(currentCountryId);
   const to = COUNTRY_ORDER_INDEX(id);
-  // Prefer explicit direction; otherwise infer from order
+  // Prefer explicit direction; otherwise infer the shortest way around the ring
   let direction = opts.direction;
   if (direction == null) {
     if (from < 0 || to < 0) direction = 1;
     else {
-      const n = 3;
+      const n = COUNTRY_ORDER.length;
       const forward = (to - from + n) % n;
       const backward = (from - to + n) % n;
       direction = forward <= backward ? 1 : -1;
@@ -712,63 +718,38 @@ let prefersReducedMotion = reducedMotionQuery?.matches ?? false;
 if (reducedMotionQuery?.addEventListener) {
   reducedMotionQuery.addEventListener("change", (e) => {
     prefersReducedMotion = e.matches;
-    // Re-render cloths with new setting
-    rerender();
-    if (carousel) {
-      carousel.layout();
-    }
-    refreshContributionsCloth();
+    // Re-render cloths with new setting (home, carousel, contributions)
+    refreshCloths();
   });
+}
+
+function refreshCloths() {
+  rerender();
+  carousel?.layout();
+  refreshContributionsCloth();
 }
 
 function main() {
   const country = getCountry();
-  const { gridW, gridH } = CONFIG;
-  const cellHeight = CONFIG.height / (gridH - 1);
-  const pad = STRINGS_PAD;
-  const fontSize = Math.max(9, Math.min(14, cellHeight * 0.95));
 
-  // Respect reduced motion: disable physics, use instant settle
-  const gravity = prefersReducedMotion ? 0 : CONFIG.gravity;
-  const damping = prefersReducedMotion ? 1 : CONFIG.damping;
-  const iterations = prefersReducedMotion ? 1 : CONFIG.iterationsPerFrame;
-  const settleFrames = prefersReducedMotion ? 60 : 0; // pre-settle so cloth hangs naturally
-
-  homeCloth = createCloth({
-    host: document.getElementById("container"),
-    text: country.cloth,
-    writing: country.writing || "horizontal",
-    width: CONFIG.width,
-    height: CONFIG.height,
-    gridW,
-    gridH,
-    pad,
-    fontSize,
-    originX: pad + (AREA_W - CONFIG.width) / 2,
-    originY: pad + Math.ceil(fontSize * 0.7),
-    font:
-      country.font ||
-      '"Songti SC", "STSong", "Noto Serif SC", "Hiragino Mincho ProN", serif',
-    dpr,
-    gravity,
-    damping,
-    iterations,
-    compressFactor: CONFIG.compressFactor,
-    stretchFactor: CONFIG.stretchFactor,
-    contain: CONFIG.contain,
-    mouseSize: CONFIG.mouseSize,
-    mouseStrength: CONFIG.mouseStrength,
-    mode: "interact",
-    settleFrames,
-    onPointerGuard: isPaneEvent,
-    onChime: ({ x, y, particle, gridW: g, intensity, force, reset }) => {
-      if (!reset) {
-        chimes.strike({ x, y, particle, gridW: g, intensity, force });
-      } else {
-        chimes.lastParticleId = -1;
-      }
-    }
-  });
+  homeCloth = createCloth(
+    clothConfigFor({
+      host: document.getElementById("container"),
+      country,
+      area: { width: AREA_W, height: AREA_H },
+      pad: STRINGS_PAD,
+      fontSize: clampFontSize(
+        (CONFIG.height / (CONFIG.gridH - 1)) * 0.95
+      ),
+      font: country.font || FALLBACK_FONT,
+      dpr,
+      config: CONFIG,
+      reducedMotion: prefersReducedMotion,
+      mode: "interact",
+      onPointerGuard: isPaneEvent,
+      chimeHandler: makeChimeHandler(chimes)
+    })
+  );
 }
 
 
@@ -937,45 +918,35 @@ let carousel = null;
 function createCarouselCloth(host, country) {
   if (!host || !country) return null;
 
-  const gridW = country.gridW ?? DEFAULT_GRID_W;
   const gridH = country.gridH ?? DEFAULT_GRID_H;
-  const width = AREA_W;
-  const height = AREA_H;
-  const pad = STRINGS_PAD;
-  const cellHeight = height / (gridH - 1);
-  const fontSize = Math.max(9, Math.min(14, cellHeight * 0.95));
+  const fontSize = clampFontSize((AREA_H / (gridH - 1)) * 0.95);
 
-  // Respect reduced motion
-  const gravity = prefersReducedMotion ? 0 : 0.2;
-  const damping = prefersReducedMotion ? 1 : 0.99;
-  const iterations = prefersReducedMotion ? 1 : 4;
-  const settleFrames = prefersReducedMotion ? 60 : 70;
-
-  const cloth = createCloth({
-    host,
-    text: country.cloth || "",
-    writing: country.writing || "horizontal",
-    width,
-    height,
-    gridW,
-    gridH,
-    pad,
-    fontSize,
-    originX: pad + (AREA_W - width) / 2,
-    originY: pad + Math.ceil(fontSize * 0.7),
-    font:
-      country.font ||
-      '"Songti SC", "STSong", "Noto Serif SC", "Hiragino Mincho ProN", serif',
-    dpr,
-    gravity,
-    damping,
-    iterations,
-    settleFrames,
-    onChime: ({ x, y, particle, gridW: g, intensity }) => {
-      chimes.setCountry(country.id);
-      chimes.strike({ x, y, particle, gridW: g, intensity });
-    }
-  });
+  const cloth = createCloth(
+    clothConfigFor({
+      host,
+      country,
+      area: { width: AREA_W, height: AREA_H },
+      pad: STRINGS_PAD,
+      fontSize,
+      font: country.font || FALLBACK_FONT,
+      dpr,
+      config: {
+        width: AREA_W,
+        height: AREA_H,
+        gridW: country.gridW ?? DEFAULT_GRID_W,
+        gridH,
+        contain: false,
+        ...CONFIG
+      },
+      reducedMotion: prefersReducedMotion,
+      physicsOverrides: { iterations: 4, settleFrames: 70 },
+      mode: "simulate",
+      chimeHandler: ({ x, y, particle, gridW: g, intensity }) => {
+        chimes.setCountry(country.id);
+        chimes.strike({ x, y, particle, gridW: g, intensity });
+      }
+    })
+  );
 
   return {
     countryId: country.id,
@@ -998,40 +969,36 @@ function createContributionsCloth(host, names, cssW, cssH, gridFn) {
   const height = Math.max(80, cssH);
   const pad = 56;
   const grid = (gridFn || CONTRIB_FALLBACK.contributionsGrid)(names, width);
-  const gridW = grid.gridW;
-  const gridH = grid.gridH;
-  const cellWidth = width / Math.max(1, gridW - 1);
-  const cellHeight = height / Math.max(1, gridH - 1);
-  const fontSize = Math.max(
-    9,
-    Math.min(14, Math.min(cellWidth * 0.95, cellHeight * 0.85))
+  const cellWidth = width / Math.max(1, grid.gridW - 1);
+  const cellHeight = height / Math.max(1, grid.gridH - 1);
+  const fontSize = clampFontSize(
+    Math.min(cellWidth * 0.95, cellHeight * 0.85)
   );
 
-  // Respect reduced motion
-  const gravity = prefersReducedMotion ? 0 : 0.2;
-  const damping = prefersReducedMotion ? 1 : 0.99;
-  const iterations = prefersReducedMotion ? 1 : 4;
-  const settleFrames = prefersReducedMotion ? 60 : 70;
-
-  return createCloth({
-    host,
-    text: grid.cloth,
-    writing: grid.writing || "horizontal",
-    width,
-    height,
-    gridW,
-    gridH,
-    pad,
-    fontSize,
-    originX: pad,
-    originY: pad + Math.ceil(fontSize * 0.35),
-    font: grid.font,
-    dpr,
-    gravity,
-    damping,
-    iterations,
-    settleFrames
-  });
+  return createCloth(
+    clothConfigFor({
+      host,
+      country: { cloth: grid.cloth, writing: grid.writing || "horizontal" },
+      area: { width, height },
+      pad,
+      fontSize,
+      font: grid.font,
+      dpr,
+      config: {
+        width,
+        height,
+        gridW: grid.gridW,
+        gridH: grid.gridH,
+        contain: false,
+        ...CONFIG
+      },
+      reducedMotion: prefersReducedMotion,
+      physicsOverrides: { iterations: 4, settleFrames: 70 },
+      mode: "simulate",
+      originX: pad,
+      originY: pad + Math.ceil(fontSize * 0.35)
+    })
+  );
 }
 
 function initCarousel() {

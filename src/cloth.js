@@ -15,6 +15,40 @@ export const CHAR_PAD_CONTRIB = 56; // narrower pad for the contributions stage
 const SPACER_COMPRESS = 0.6;
 const SPACER_STRETCH = 4;
 const INK = "#2a2620";
+const MIN_FONT_SIZE = 9;
+const MAX_FONT_SIZE = 14;
+
+/**
+ * Physics tuning shared by every cloth build site. Gracefully absent
+ * `overrides` keys fall back to cloth defaults — callers pass only what changes.
+ * @param {boolean} [reducedMotion] when true, settle instantly and skip gravity
+ * @param {object} [overrides] per-build keys: gravity, damping, iterations, settleFrames
+ */
+export function physicsFor(reducedMotion, overrides = {}) {
+  const { gravity, damping, iterations, settleFrames } = overrides;
+  return reducedMotion
+    ? { gravity: 0, damping: 1, iterations: 1, settleFrames: 60 }
+    : {
+        gravity: gravity ?? 0.2,
+        damping: damping ?? 0.99,
+        iterations: iterations ?? 5,
+        settleFrames: settleFrames ?? 0
+      };
+}
+
+/**
+ * Build the `onChime` callback for interact-mode cloths (strike the shared
+ * chimes; on reset, dismiss any in-flight hold note).
+ */
+export function makeChimeHandler(chimes) {
+  return ({ x, y, particle, gridW, intensity, force, reset }) => {
+    if (!reset) {
+      chimes.strike({ x, y, particle, gridW, intensity, force });
+    } else {
+      chimes.lastParticleId = -1;
+    }
+  };
+}
 const PARTICLE_RADIUS = 4;
 const GLYPH_SCALE = 1.35;
 const CHIME_RADIUS = 55;
@@ -547,4 +581,84 @@ export function createCloth(o) {
     setPhysics,
     destroy
   };
+}
+
+/**
+ * Assemble `createCloth` options from base + config + country before use.
+ * Missing physics keys fall back to cloth defaults; `physicsOverrides` win.
+ * @param {object} o
+ * @param {HTMLElement} o.host
+ * @param {object} o.country     a COUNTRIES entry
+ * @param {{width:number,height:number}} o.area
+ * @param {number} o.pad
+ * @param {number} o.fontSize
+ * @param {string} o.font
+ * @param {number} o.dpr
+ * @param {object} o.config      the shared CONFIG (layout + inputs)
+ * @param {boolean} o.reducedMotion
+ * @param {object} [o.physicsOverrides] per-site tuning (iterations, settleFrames…)
+ * @param {string} [o.mode="interact"]
+ * @param {(e:PointerEvent)=>boolean} [o.onPointerGuard]
+ * @param {Function} [o.chimeHandler]
+ * @param {number} [o.originX]
+ * @param {number} [o.originY]
+ */
+export function clothConfigFor(o) {
+  const {
+    host,
+    country,
+    area,
+    pad,
+    fontSize,
+    font,
+    dpr,
+    config,
+    reducedMotion,
+    physicsOverrides = {},
+    mode = "interact",
+    onPointerGuard,
+    chimeHandler,
+    originX = pad + (area.width - config.width) / 2,
+    originY = pad + Math.ceil(fontSize * 0.7)
+  } = o;
+
+  const physics = physicsFor(reducedMotion, {
+    gravity: config.gravity,
+    damping: config.damping,
+    iterations: config.iterationsPerFrame,
+    ...physicsOverrides
+  });
+
+  return {
+    host,
+    text: country.cloth ?? "",
+    writing: country.writing ?? "horizontal",
+    width: config.width,
+    height: config.height,
+    gridW: config.gridW,
+    gridH: config.gridH,
+    pad,
+    fontSize,
+    originX,
+    originY,
+    font,
+    dpr,
+    gravity: physics.gravity,
+    damping: physics.damping,
+    iterations: physics.iterations,
+    settleFrames: physics.settleFrames,
+    compressFactor: config.compressFactor,
+    stretchFactor: config.stretchFactor,
+    contain: config.contain,
+    mouseSize: config.mouseSize,
+    mouseStrength: config.mouseStrength,
+    mode,
+    ...(chimeHandler ? { onChime: chimeHandler } : {}),
+    ...(onPointerGuard ? { onPointerGuard } : {})
+  };
+}
+
+/** Clamp a glyph font size to the printable band used by every cloth. */
+export function clampFontSize(size) {
+  return Math.max(MIN_FONT_SIZE, Math.min(MAX_FONT_SIZE, size));
 }

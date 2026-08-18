@@ -6,12 +6,52 @@
  * input mode, padding, chimes) is now a parameter.
  */
 
+import { charForCell } from "./countries.js";
+import { smoothstep } from "./utils.js";
+
 export const CHAR_PAD = 420; // canvas pad around the grid so sway isn't clipped
 export const CHAR_PAD_CONTRIB = 56; // narrower pad for the contributions stage
 
 const SPACER_COMPRESS = 0.6;
 const SPACER_STRETCH = 4;
 const INK = "#2a2620";
+const MIN_FONT_SIZE = 9;
+const MAX_FONT_SIZE = 14;
+
+/**
+ * Physics tuning shared by every cloth build site. Gracefully absent
+ * `overrides` keys fall back to cloth defaults — callers pass only what changes.
+ * @param {boolean} [reducedMotion] when true, settle instantly and skip gravity
+ * @param {object} [overrides] per-build keys: gravity, damping, iterations, settleFrames
+ */
+export function physicsFor(reducedMotion, overrides = {}) {
+  const { gravity, damping, iterations, settleFrames } = overrides;
+  return reducedMotion
+    ? { gravity: 0, damping: 1, iterations: 1, settleFrames: 60 }
+    : {
+        gravity: gravity ?? 0.2,
+        damping: damping ?? 0.99,
+        iterations: iterations ?? 5,
+        settleFrames: settleFrames ?? 0
+      };
+}
+
+/**
+ * Build the `onChime` callback for interact-mode cloths (strike the shared
+ * chimes; on reset, dismiss any in-flight hold note).
+ */
+export function makeChimeHandler(chimes) {
+  return ({ x, y, particle, gridW, intensity, force, reset }) => {
+    if (!reset) {
+      chimes.strike({ x, y, particle, gridW, intensity, force });
+    } else {
+      chimes.lastParticleId = -1;
+    }
+  };
+}
+const PARTICLE_RADIUS = 4;
+const GLYPH_SCALE = 1.35;
+const CHIME_RADIUS = 55;
 
 export class Vec2 {
   constructor(x = 0, y = 0) {
@@ -79,7 +119,7 @@ class Particle {
   }
   contain(limitW, limitH) {
     if (this.pinned) return;
-    const radius = 4;
+    const radius = PARTICLE_RADIUS;
     if (this.pos.x < radius) {
       this.pos.x = radius;
       this.oldPos.x = this.pos.x + Math.abs(this.oldPos.x - this.pos.x) * 0.8;
@@ -269,7 +309,7 @@ export function createCloth(o) {
   const glyphs = {};
   for (const ch of new Set(text)) {
     if (ch === " " || ch === "　") continue;
-    const size = Math.ceil(fontSize * 1.35);
+    const size = Math.ceil(fontSize * GLYPH_SCALE);
     const off = document.createElement("canvas");
     off.width = Math.ceil(size * dpr);
     off.height = Math.ceil(size * dpr);
@@ -339,8 +379,8 @@ export function createCloth(o) {
   host.innerHTML = "";
   host.appendChild(canvas);
 
-  const mousePos = new Vec2();
-  const chimeRadiusSq = 55 * 55;
+  const mousePosition = new Vec2();
+  const chimeRadiusSq = CHIME_RADIUS * CHIME_RADIUS;
   let active = true;
   let destroyed = false;
   let verticalConstraints = null; // lazily collected for setPhysics()
@@ -376,7 +416,7 @@ export function createCloth(o) {
   }
 
   function forceFor(particle) {
-    const diff = mousePos.subtractNew(particle.pos);
+    const diff = mousePosition.subtractNew(particle.pos);
     const ls = diff.lengthSquared;
     if (ls >= mouseSize) return null;
     const a = diff.angle - Math.PI;
@@ -388,7 +428,7 @@ export function createCloth(o) {
     if (!active || destroyed) return;
     const pt = localPoint(clientX, clientY);
     if (!pt) return;
-    mousePos.reset(pt.x, pt.y);
+    mousePosition.reset(pt.x, pt.y);
 
     let nearest = null;
     let nearestLs = Infinity;
@@ -396,7 +436,7 @@ export function createCloth(o) {
       const f = forceFor(p);
       if (f) p.applyForce(f);
       if (chime && onChime) {
-        const ls = mousePos.subtractNew(p.pos).lengthSquared;
+        const ls = mousePosition.subtractNew(p.pos).lengthSquared;
         if (ls < chimeRadiusSq && ls < nearestLs) {
           nearest = p;
           nearestLs = ls;
@@ -452,9 +492,9 @@ export function createCloth(o) {
     if (onPointerGuard?.(e)) return;
     const pt = localPoint(e.clientX, e.clientY);
     if (!pt) return;
-    mousePos.reset(pt.x, pt.y);
+    mousePosition.reset(pt.x, pt.y);
     for (const p of particles) {
-      if (mousePos.subtractNew(p.pos).length < 24) {
+      if (mousePosition.subtractNew(p.pos).length < 24) {
         grabbedParticle = p;
         grabbedParticle.originalPinnedState = grabbedParticle.pinned;
         grabbedParticle.pinned = true;
@@ -481,7 +521,7 @@ export function createCloth(o) {
     if (onPointerGuard?.(e) && !grabbedParticle) return;
     const pt = localPoint(e.clientX, e.clientY);
     if (!pt) return;
-    mousePos.reset(pt.x, pt.y);
+    mousePosition.reset(pt.x, pt.y);
 
     if (grabbedParticle) {
       grabbedParticle.pos.reset(pt.x, pt.y);
@@ -494,7 +534,7 @@ export function createCloth(o) {
       const f = forceFor(p);
       if (f) p.applyForce(f);
       if (onChime) {
-        const ls = mousePos.subtractNew(p.pos).lengthSquared;
+        const ls = mousePosition.subtractNew(p.pos).lengthSquared;
         if (ls < chimeRadiusSq && ls < nearestLs) {
           nearest = p;
           nearestLs = ls;
@@ -543,20 +583,82 @@ export function createCloth(o) {
   };
 }
 
-// Local helpers (kept internal — utils.js versions are used by call-sites).
-function smoothstep(edge0, edge1, x) {
-  const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
-  return t * t * (3 - 2 * t);
+/**
+ * Assemble `createCloth` options from base + config + country before use.
+ * Missing physics keys fall back to cloth defaults; `physicsOverrides` win.
+ * @param {object} o
+ * @param {HTMLElement} o.host
+ * @param {object} o.country     a COUNTRIES entry
+ * @param {{width:number,height:number}} o.area
+ * @param {number} o.pad
+ * @param {number} o.fontSize
+ * @param {string} o.font
+ * @param {number} o.dpr
+ * @param {object} o.config      the shared CONFIG (layout + inputs)
+ * @param {boolean} o.reducedMotion
+ * @param {object} [o.physicsOverrides] per-site tuning (iterations, settleFrames…)
+ * @param {string} [o.mode="interact"]
+ * @param {(e:PointerEvent)=>boolean} [o.onPointerGuard]
+ * @param {Function} [o.chimeHandler]
+ * @param {number} [o.originX]
+ * @param {number} [o.originY]
+ */
+export function clothConfigFor(o) {
+  const {
+    host,
+    country,
+    area,
+    pad,
+    fontSize,
+    font,
+    dpr,
+    config,
+    reducedMotion,
+    physicsOverrides = {},
+    mode = "interact",
+    onPointerGuard,
+    chimeHandler,
+    originX = pad + (area.width - config.width) / 2,
+    originY = pad + Math.ceil(fontSize * 0.7)
+  } = o;
+
+  const physics = physicsFor(reducedMotion, {
+    gravity: config.gravity,
+    damping: config.damping,
+    iterations: config.iterationsPerFrame,
+    ...physicsOverrides
+  });
+
+  return {
+    host,
+    text: country.cloth ?? "",
+    writing: country.writing ?? "horizontal",
+    width: config.width,
+    height: config.height,
+    gridW: config.gridW,
+    gridH: config.gridH,
+    pad,
+    fontSize,
+    originX,
+    originY,
+    font,
+    dpr,
+    gravity: physics.gravity,
+    damping: physics.damping,
+    iterations: physics.iterations,
+    settleFrames: physics.settleFrames,
+    compressFactor: config.compressFactor,
+    stretchFactor: config.stretchFactor,
+    contain: config.contain,
+    mouseSize: config.mouseSize,
+    mouseStrength: config.mouseStrength,
+    mode,
+    ...(chimeHandler ? { onChime: chimeHandler } : {}),
+    ...(onPointerGuard ? { onPointerGuard } : {})
+  };
 }
 
-function charForCell(text, i, j, gridW, gridH, writing = "horizontal") {
-  if (!text || !text.length) return " ";
-  let index;
-  if (writing === "vertical") {
-    const colFromRight = gridW - 1 - i;
-    index = colFromRight * gridH + j;
-  } else {
-    index = j * gridW + i;
-  }
-  return text[index % text.length] || " ";
+/** Clamp a glyph font size to the printable band used by every cloth. */
+export function clampFontSize(size) {
+  return Math.max(MIN_FONT_SIZE, Math.min(MAX_FONT_SIZE, size));
 }

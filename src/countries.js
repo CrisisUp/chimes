@@ -484,6 +484,10 @@ export const COUNTRY_ORDER = [
 
 export const DEFAULT_COUNTRY = "china";
 
+/** Stack for countries without an explicit font (CJK glyphs / Songti). */
+export const FALLBACK_FONT =
+  '"Songti SC", "STSong", "Noto Serif SC", "Hiragino Mincho ProN", serif';
+
 export function neighborsOf(id) {
   const i = COUNTRY_ORDER.indexOf(id);
   if (i < 0) return { left: "vietnam", right: "japan" };
