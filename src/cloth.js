@@ -371,12 +371,19 @@ export function createCloth(o) {
   }
 
   const canvas = document.createElement("canvas");
-  sizeCanvas(canvas, canvasW, canvasH, dpr);
+  host.innerHTML = "";
+  host.appendChild(canvas);
+  // Size the buffer to what the host actually shows. On small viewports the
+  // host (`.strings`) is scaled down by CSS (e.g. 58vw) while the layout wants
+  // a 492px desktop canvas — without this, an iPhone allocates a 1998px buffer
+  // for a 226px cloth (4x the memory, 22ms frames). Fit the buffer to the host.
+  const hostW = host.clientWidth || canvasW;
+  const hostH = host.clientHeight || canvasH;
+  const scale = Math.min(hostW / canvasW, hostH / canvasH) || 1;
+  sizeCanvas(canvas, canvasW * scale, canvasH * scale, dpr);
   const ctx = canvas.getContext("2d");
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
-  host.innerHTML = "";
-  host.appendChild(canvas);
 
   const mousePosition = new Vec2();
   const chimeRadiusSq = CHIME_RADIUS * CHIME_RADIUS;
@@ -408,9 +415,10 @@ export function createCloth(o) {
 
   function draw() {
     if (destroyed) return;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, canvasW, canvasH);
-    drawCode(ctx, particles, glyphs, originX, originY, dpr);
+    const rd = dpr * scale; // effective render DPR — buffer fits the host
+    ctx.setTransform(rd, 0, 0, rd, 0, 0);
+    ctx.clearRect(0, 0, canvasW * scale, canvasH * scale);
+    drawCode(ctx, particles, glyphs, originX, originY, rd);
   }
 
   function step(dt) {
@@ -619,11 +627,21 @@ export function clothConfigFor(o) {
     originY = pad + Math.ceil(fontSize * 0.7)
   } = o;
 
+  // Physics budget scales with the viewport: small screens can't afford the
+  // desktop 5 solves/cloth × N cloths (a phone runs ~17ms of Verlet alone).
+  let overrides = physicsOverrides;
+  if (typeof window !== "undefined" && window.innerWidth < 560 && config.iterationsPerFrame !== undefined) {
+    overrides = {
+      ...physicsOverrides,
+      iterations: Math.min(physicsOverrides.iterations ?? 5, 2)
+    };
+  }
+
   const physics = physicsFor(reducedMotion, {
     gravity: config.gravity,
     damping: config.damping,
     iterations: config.iterationsPerFrame,
-    ...physicsOverrides
+    ...overrides
   });
 
   return {
