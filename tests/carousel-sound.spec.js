@@ -1,4 +1,4 @@
-const { test, expect } = require("@playwright/test");
+import { test, expect } from "@playwright/test";
 
 /**
  * Regression: the carousel's chime hit-test used canvas bounds, and a centered

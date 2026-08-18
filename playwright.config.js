@@ -1,7 +1,9 @@
-const { defineConfig, devices } = require("@playwright/test");
+import { defineConfig, devices } from "@playwright/test";
 
-module.exports = defineConfig({
+export default defineConfig({
   testDir: "./tests",
+  // node --test owns *.test.js (unit); Playwright owns *.spec.js (E2E).
+  testMatch: "**/*.spec.js",
   // Playwright spins up the static server for the suite (reuses one already running).
   webServer: {
     command: "python3 -m http.server 8137 --directory dist",
