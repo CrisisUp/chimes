@@ -205,7 +205,7 @@ class Constraint {
 
 /**
  * Draw every particle's glyph, rotated by its vertical constraint angle.
- * @param {*} ctx
+ * @param {CanvasRenderingContext2D} ctx
  * @param {Particle[]} particles
  * @param {HTMLCanvasElement[]} glyphs map char → offscreen canvas
  * @param {number} originX

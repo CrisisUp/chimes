@@ -6,7 +6,7 @@ import {
   makeChimeHandler
 } from "./cloth.js";
 import {
-  COUNTRIES,
+  COUNTRY_MAP,
   COUNTRY_ORDER,
   DEFAULT_COUNTRY,
   FALLBACK_FONT,
@@ -73,7 +73,7 @@ let gridWBinding = null;
 let gridHBinding = null;
 
 function getCountry() {
-  return COUNTRIES[currentCountryId] || COUNTRIES[DEFAULT_COUNTRY];
+  return COUNTRY_MAP[currentCountryId] || COUNTRY_MAP[DEFAULT_COUNTRY];
 }
 
 function sleep(ms) {
@@ -158,8 +158,8 @@ function copyEnterDuration(country) {
 
 function updateSideButtons() {
   const { left, right } = neighborsOf(currentCountryId);
-  const leftCountry = COUNTRIES[left];
-  const rightCountry = COUNTRIES[right];
+  const leftCountry = COUNTRY_MAP[left];
+  const rightCountry = COUNTRY_MAP[right];
 
   const btnLeft = document.getElementById("btnLeft");
   const btnRight = document.getElementById("btnRight");
@@ -196,7 +196,7 @@ function applyCountryVisuals(country) {
 }
 
 function setCountryImmediate(id) {
-  if (!COUNTRIES[id]) return;
+  if (!COUNTRY_MAP[id]) return;
   currentCountryId = id;
   CONFIG.country = id;
   try {
@@ -209,7 +209,7 @@ function setCountryImmediate(id) {
 }
 
 async function transitionTo(id, direction) {
-  if (!COUNTRIES[id] || id === currentCountryId || transitioning) return;
+  if (!COUNTRY_MAP[id] || id === currentCountryId || transitioning) return;
 
   // Respect reduced motion
   if (prefersReducedMotion) {
@@ -224,7 +224,7 @@ async function transitionTo(id, direction) {
   const bottom = document.getElementById("bottomCopy");
   const exitX = direction > 0 ? "-110vw" : "110vw";
   const enterX = direction > 0 ? "110vw" : "-110vw";
-  const next = COUNTRIES[id];
+  const next = COUNTRY_MAP[id];
 
   if (bottom) {
     bottom.classList.remove("is-entering", "is-in");
@@ -276,7 +276,7 @@ async function transitionTo(id, direction) {
 }
 
 function setCountry(id, opts = {}) {
-  if (!COUNTRIES[id]) return;
+  if (!COUNTRY_MAP[id]) return;
   if (
     opts.animate === false ||
     id === currentCountryId ||
@@ -332,7 +332,7 @@ countryBinding = fCountry
   .addBinding(CONFIG, "country", {
     label: "Country",
     options: Object.fromEntries(
-      Object.values(COUNTRIES).map((c) => [c.name, c.id])
+      Object.values(COUNTRY_MAP).map((c) => [c.name, c.id])
     )
   })
   .on("change", (ev) => {
@@ -1019,7 +1019,7 @@ function initCarousel() {
 
   track.innerHTML = "";
   COUNTRY_ORDER.forEach((id) => {
-    const country = COUNTRIES[id];
+    const country = COUNTRY_MAP[id];
     const el = document.createElement("article");
     el.className = "carousel__item";
     el.dataset.country = id;

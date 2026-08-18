@@ -4,7 +4,6 @@
  */
 export const COUNTRIES = {
   vietnam: {
-    id: "vietnam",
     name: "Vietnam",
     roof: "./roof-vietnam.webp",
     buttonIcon: "./selector-vietnam.webp",
@@ -35,10 +34,9 @@ export const COUNTRIES = {
       "Đường dài mới biết ngựa hay — đừng vội kết luận về ai đó ở khoảng cách của một buổi sáng",
       "Thuận buồm xuôi gió — cũng đừng quên rằng thuận gió không phải là bài kiểm duy nhất của người lái",
       "Đất lành chim đậu — nơi nào tâm được phép hạ xuống bình yên nơi ấy thành nhà"
-    ].join("　")
+    ]
   },
   china: {
-    id: "china",
     name: "China",
     roof: "./roof-china.webp",
     buttonIcon: "./selector-china.webp",
@@ -68,10 +66,9 @@ export const COUNTRIES = {
       "心之所向素履以往——方向对了脚步慢一点也仍然在前进",
       "长风破浪会有时直挂云帆济沧海——时运会来但帆必须事先挂好",
       "愿你的脚步比目光走得更远——看见是开始抵达是责任"
-    ].join("　")
+    ]
   },
   japan: {
-    id: "japan",
     name: "Japan",
     roof: "./roof-japan.webp",
     buttonIcon: "./selector-japan.webp",
@@ -101,11 +98,10 @@ export const COUNTRIES = {
       "年に一度は行ったことのない場所へ行け——未知は才能を鍛えるのではなく感受性を蘇らせる",
       "未知の地へ発つ瞬間こそ人生で最も喜ばしい——その瞬間あなたは可能性そのものになる",
       "旅は言葉を奪いそして語り部にする——まず沈黙に耐えられる者だけが本当の物語を持てる"
-    ].join("　")
+    ]
   },
   // 1 — Kazakhstan (yurt)
   kazakhstan: {
-    id: "kazakhstan",
     name: "Kazakhstan",
     roof: "./roof-kazakhstan.webp",
     buttonIcon: "./selector-kazakhstan.webp",
@@ -137,11 +133,10 @@ export const COUNTRIES = {
       "Сапар — жанның айнасы — жол сені көрсетпейді сен жолда өзіңді көресің",
       "Қадам сайын жаңа ән — бір әнге жабысып қалмасаң ғана өмір әуенге айналады",
       "Көктемгі жел еркіндік әкеледі — еркіндік сыртқы ашық жер емес ішкі рұқсат"
-    ].join("　")
+    ]
   },
   // 2 — Russia (terem)
   russia: {
-    id: "russia",
     name: "Russia",
     roof: "./roof-russia.webp",
     buttonIcon: "./selector-russia.webp",
@@ -173,11 +168,10 @@ export const COUNTRIES = {
       "Ночь коротка у костра — общность превращает тьму из угрозы в комнату для историй",
       "Золотые купола в тумане — вера видит форму даже когда ясность ещё не пришла",
       "Путешествие меняет взгляд — и только изменённым взглядом стоит возвращаться домой"
-    ].join("　")
+    ]
   },
   // 3 — France (mansard)
   france: {
-    id: "france",
     name: "France",
     roof: "./roof-france.webp",
     buttonIcon: "./selector-france.webp",
@@ -209,11 +203,10 @@ export const COUNTRIES = {
       "Le hasard fait bien les choses — quand le cœur a déjà choisi de s'ouvrir",
       "Mieux vaut allumer une chandelle que maudire l'obscurité — le voyageur porte sa propre lumière",
       "La route est longue mais le cœur est léger — pourvu qu'on accepte de ne pas tout comprendre d'avance"
-    ].join("　")
+    ]
   },
   // 4 — India (dome)
   india: {
-    id: "india",
     name: "India",
     roof: "./roof-india.webp",
     buttonIcon: "./selector-india.webp",
@@ -245,11 +238,10 @@ export const COUNTRIES = {
       "अंधेरे में भी दीया जलाओ — भय को रोशनी से जवाब दो शब्दों से नहीं",
       "घर वही जहाँ स्वागत हो — पत्थर कहीं भी लगा सकते हो प्रतीक्षा अर्थ बनाती है",
       "यात्रा दृष्टि बदलती है — और बदली दृष्टि से ही घर लौटना योग्य होता है"
-    ].join("　")
+    ]
   },
   // 5 — UK (thatch)
   uk: {
-    id: "uk",
     name: "UK",
     roof: "./roof-uk.webp",
     buttonIcon: "./selector-uk.webp",
@@ -281,11 +273,10 @@ export const COUNTRIES = {
       "Mist hides the hill then returns it — faith sees form before clarity arrives",
       "Do not measure a place by the weather — measure it by how you listen when the weather speaks",
       "Travel changes the eye — and only a changed eye is fit to come home again"
-    ].join("　")
+    ]
   },
   // 6 — Norway (sod roof)
   norway: {
-    id: "norway",
     name: "Norway",
     roof: "./roof-norway.webp",
     buttonIcon: "./selector-norway.webp",
@@ -317,11 +308,10 @@ export const COUNTRIES = {
       "Det beste øyeblikket er å tre inn i det ukjente — da er du midlertidig mulighet",
       "Kabinen er liten verdenen er stor — det er nettopp derfor kabinen trengs",
       "Reisen endrer blikket — og bare et endret blikk er verdig til å komme hjem"
-    ].join("　")
+    ]
   },
   // 7 — Italy (duomo)
   italy: {
-    id: "italy",
     name: "Italy",
     roof: "./roof-italy.webp",
     buttonIcon: "./selector-italy.webp",
@@ -353,11 +343,10 @@ export const COUNTRIES = {
       "La nebbia nasconde poi restituisce — la fede vede la forma prima che arrivi la chiarezza",
       "Cammina con il cuore intero — un luogo percorso a metà resta terra di altri",
       "Il viaggio cambia lo sguardo — e solo con uno sguardo cambiato vale la pena tornare"
-    ].join("　")
+    ]
   },
   // 8 — USA (shingle gable)
   usa: {
-    id: "usa",
     name: "USA",
     roof: "./roof-usa.webp",
     buttonIcon: "./selector-usa.webp",
@@ -389,11 +378,10 @@ export const COUNTRIES = {
       "Do not measure a place by the weather — measure it by how you listen when the weather speaks",
       "The road teaches what the room cannot — motion is a kind of honesty",
       "Travel changes the eye — and only a changed eye is fit to come home again"
-    ].join("　")
+    ]
   },
   // 9 — Brazil (terracotta)
   brazil: {
-    id: "brazil",
     name: "Brazil",
     roof: "./roof-brazil.webp",
     buttonIcon: "./selector-brazil.webp",
@@ -425,11 +413,10 @@ export const COUNTRIES = {
       "A névoa esconde depois devolve — a fé vê a forma antes que chegue a clareza",
       "Caminhe com o coração inteiro — um lugar percorrido pela metade continua terra de outros",
       "A viagem muda o olhar — e só com um olhar mudado vale a pena voltar"
-    ].join("　")
+    ]
   },
   // 10 — Iran (windcatchers)
   iran: {
-    id: "iran",
     name: "Iran",
     roof: "./roof-iran.webp",
     buttonIcon: "./selector-iran.webp",
@@ -461,9 +448,21 @@ export const COUNTRIES = {
       "مه پنهان می‌کند بعد بازمی‌گرداند — ایمان پیش از روشنی شکل را می‌بیند",
       "با دلِ تمام راه برو — جایی که نیمه‌راه رفته‌ای هنوز زمین دیگران است",
       "سفر نگاه را عوض می‌کند — و فقط با نگاهی عوض‌شده ارزش دارد که بازگردی"
-    ].join("　")
+    ]
   }
 };
+
+/**
+ * Countries with their `id` and `cloth` string derived from the raw data above —
+ * the key is the id, and cloth paragraphs are joined by the writing separator.
+ * Prefer this over COUNTRIES anywhere a country's id/text is needed.
+ */
+export const COUNTRY_MAP = Object.fromEntries(
+  Object.entries(COUNTRIES).map(([id, c]) => [
+    id,
+    { ...c, id, cloth: Array.isArray(c.cloth) ? c.cloth.join("　") : c.cloth }
+  ])
+);
 
 /** Left → right order for side navigation */
 export const COUNTRY_ORDER = [

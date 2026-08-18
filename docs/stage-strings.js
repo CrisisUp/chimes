@@ -5,7 +5,7 @@ import {
   clothConfigFor,
   makeChimeHandler
 } from "./cloth.js";
-import { COUNTRIES, DEFAULT_COUNTRY, FALLBACK_FONT } from "./countries.js";
+import { COUNTRY_MAP, DEFAULT_COUNTRY, FALLBACK_FONT } from "./countries.js";
 import { chimes } from "./chimes.js";
 
 const AREA_W = 492;
@@ -14,7 +14,7 @@ const STRINGS_PAD = 420;
 const DEFAULT_GRID_W = 36;
 const DEFAULT_GRID_H = 40;
 
-const country = COUNTRIES[DEFAULT_COUNTRY] || COUNTRIES.china;
+const country = COUNTRY_MAP[DEFAULT_COUNTRY];
 
 const CONFIG = {
   width: AREA_W,
