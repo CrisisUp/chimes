@@ -488,13 +488,6 @@ export function wrapContributionNames(names, gridW) {
 }
 
 /**
- * Build source text for horizontal writing: words fill width, then wrap.
- */
-export function contributionsClothText(names, gridW) {
-  return wrapContributionNames(names, gridW).join("");
-}
-
-/**
  * Grid settings for a horizontal cloth that fills stage width with dense columns.
  * Names flow left → right; wrap to the next hanging row when the line is full.
  * @param {string[]} names

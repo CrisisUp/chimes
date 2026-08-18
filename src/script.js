@@ -900,6 +900,17 @@ const CAROUSEL_GAP_DESKTOP = 575;
 const CAROUSEL_AREA_DESKTOP = 492;
 const CAROUSEL_SIDE_SCALE = 0.58;
 const CAROUSEL_SNAP_MS = 520;
+// Tuning: how far an item can drift before fading out / turning inactive,
+// and the mid-point past which it's treated as the centered slide.
+const CAROUSEL_HIDE_DIST = 1.65;
+const CAROUSEL_CENTER_MAX = 0.35;
+// Fling feel: velocity→step conversion, max fling steps, dead-zone nudge.
+const FLICK_PX_PER_STEP = 140;
+const FLICK_MAX_STEPS = 0.55;
+const NUDGE_MAX_DIST = 0.22;
+// Velocity smoothing (exponential moving average).
+const VELOCITY_SMOOTH = 0.65;
+const VELOCITY_BLEND = 0.35;
 
 function carouselGapPx() {
   const sample =
@@ -1074,11 +1085,11 @@ function initCarousel() {
       const s = scaleFor(absD);
       el.style.transform = `translate3d(${x}px, 0, 0) scale(${s})`;
       el.style.zIndex = String(Math.round(100 - absD * 20));
-      el.classList.toggle("is-center", absD < 0.35);
-      el.setAttribute("aria-selected", absD < 0.35 ? "true" : "false");
-      el.style.opacity = absD > 1.65 ? "0" : "1";
-      el.style.pointerEvents = absD > 1.65 ? "none" : "auto";
-      if (cloths[i]) cloths[i].setActive(absD <= 1.65);
+      el.classList.toggle("is-center", absD < CAROUSEL_CENTER_MAX);
+      el.setAttribute("aria-selected", absD < CAROUSEL_CENTER_MAX ? "true" : "false");
+      el.style.opacity = absD > CAROUSEL_HIDE_DIST ? "0" : "1";
+      el.style.pointerEvents = absD > CAROUSEL_HIDE_DIST ? "none" : "auto";
+      if (cloths[i]) cloths[i].setActive(absD <= CAROUSEL_HIDE_DIST);
     });
   }
 
@@ -1150,7 +1161,7 @@ function initCarousel() {
       const cloth = cloths[i];
       if (!cloth) continue;
       const d = Math.abs(wrapDelta(i - index));
-      if (d > 1.65) continue;
+      if (d > CAROUSEL_HIDE_DIST) continue;
       if (cloth.containsPoint(e.clientX, e.clientY)) {
         cloth.brush(e.clientX, e.clientY);
         return;
@@ -1183,7 +1194,7 @@ function initCarousel() {
         const now = performance.now();
         const dt = Math.max(1, now - lastT);
         const vx = (e.clientX - lastX) / dt; // px / ms
-        velocity = velocity * 0.65 + vx * 0.35;
+        velocity = velocity * VELOCITY_SMOOTH + vx * VELOCITY_BLEND;
         // Cap so a noisy last frame can't invent a double-skip fling
         velocity = Math.max(-2.2, Math.min(2.2, velocity));
         lastX = e.clientX;
@@ -1229,8 +1240,8 @@ function initCarousel() {
     const gap = carouselGapPx();
     // Drag-left increases index (content follows finger); fling matches -.
     const flickIndex = Math.max(
-      -0.55,
-      Math.min(0.55, (-velocity * 140) / gap)
+      -FLICK_MAX_STEPS,
+      Math.min(FLICK_MAX_STEPS, (-velocity * FLICK_PX_PER_STEP) / gap)
     );
     const releaseNearest = Math.round(index);
     let target = Math.round(index + flickIndex);
@@ -1240,7 +1251,7 @@ function initCarousel() {
 
     // Tiny nudge without a real flick → stay on the slide you started from
     const dragged = index - startIndex;
-    if (Math.abs(dragged) < 0.2 && Math.abs(flickIndex) < 0.22) {
+    if (Math.abs(dragged) < NUDGE_MAX_DIST && Math.abs(flickIndex) < NUDGE_MAX_DIST) {
       target = Math.round(startIndex);
     }
 
