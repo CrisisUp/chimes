@@ -18,6 +18,14 @@
 
 /** @typedef {{ freqs: number[], partials: { ratio: number, gain: number }[], duration: number, attack: number, peak: number, droop: number, noiseDur: number, noiseGain: number, noiseQ: number, noiseMul: number, shelfHz: number, shelfGain: number, minIntervalMs: number }} ChimeProfile */
 
+/**
+ * Run `onEnd` the exact moment this AudioNode source finishes playing.
+ * Voice accounting stays in sync with real playback instead of a setTimeout.
+ */
+function releaseVoiceOnEnd(source, onEnd) {
+  source.onended = onEnd;
+}
+
 /** @type {Record<string, ChimeProfile>} */
 export const COUNTRY_CHIMES = {
   // Lower bronze bells — longer sustain, darker partials
@@ -336,11 +344,16 @@ export class StringChimes {
   setCountry(id) {
     this.countryId = id;
     this.profile = COUNTRY_CHIMES[id] || FALLBACK;
-    this.lastParticleId = -1;
+    this.reset();
     if (this.shelf) {
       this.shelf.frequency.value = this.profile.shelfHz;
       this.shelf.gain.value = this.profile.shelfGain;
     }
+  }
+
+  /** Drop any in-flight hold note so the next pointer move strikes fresh. */
+  reset() {
+    this.lastParticleId = -1;
   }
 
   async ensure() {
@@ -436,9 +449,7 @@ export class StringChimes {
     voice.connect(this.master);
 
     this.activeVoices += 1;
-    window.setTimeout(() => {
-      this.activeVoices = Math.max(0, this.activeVoices - 1);
-    }, (duration + 0.05) * 1000);
+    let voicesClosing = 0; // partials + noise that must end before this strike may release
 
     for (const { ratio, gain } of profile.partials) {
       const osc = ctx.createOscillator();
@@ -455,6 +466,7 @@ export class StringChimes {
       g.connect(voice);
       osc.start(t);
       osc.stop(t + duration + 0.02);
+      releaseVoiceOnEnd(osc, () => voicesClosing--);
     }
 
     const noiseDur = profile.noiseDur;
@@ -484,6 +496,12 @@ export class StringChimes {
     noiseGain.connect(voice);
     noise.start(t);
     noise.stop(t + noiseDur + 0.01);
+    releaseVoiceOnEnd(noise, () => {
+      voicesClosing--;
+      if (voicesClosing === 0) {
+        this.activeVoices = Math.max(0, this.activeVoices - 1);
+      }
+    });
   }
 }
 

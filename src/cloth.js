@@ -39,16 +39,20 @@ export function physicsFor(reducedMotion, overrides = {}) {
  */
 export function makeChimeHandler(chimes) {
   return ({ x, y, particle, gridW, intensity, force, reset }) => {
-    if (!reset) {
-      chimes.strike({ x, y, particle, gridW, intensity, force });
-    } else {
-      chimes.lastParticleId = -1;
+    if (reset) {
+      chimes.reset();
+      return;
     }
+    chimes.strike({ x, y, particle, gridW, intensity, force });
   };
 }
 const PARTICLE_RADIUS = 4;
 const GLYPH_SCALE = 1.35;
 const CHIME_RADIUS = 55;
+const GRAB_RADIUS = 24; // px to catch a particle for grab-drag
+const GRAB_CHIME_INTENSITY = 0.85; // fixed loudness on grab
+const CHIME_INTENSITY_FLOOR = 0.2;
+const CHIME_INTENSITY_SPAN = 0.7;
 
 export class Vec2 {
   constructor(x = 0, y = 0) {
@@ -399,7 +403,7 @@ export function createCloth(o) {
         }
       }
     }
-    return nearest ? { particle: nearest, intensity: 0.2 + (1 - nearestLs / chimeRadiusSq) * 0.7 } : null;
+    return nearest ? { particle: nearest, intensity: CHIME_INTENSITY_FLOOR + (1 - nearestLs / chimeRadiusSq) * CHIME_INTENSITY_SPAN } : null;
   }
 
   function draw() {
@@ -490,6 +494,7 @@ export function createCloth(o) {
   // ─── interact mode: document-level pointer listeners + grab + chime ───
   let input = null;
   let grabbedParticle = null;
+  let grabbedPrevPinned = false;
 
   const onPointerDown = (e) => {
     if (onPointerGuard?.(e)) return;
@@ -497,16 +502,16 @@ export function createCloth(o) {
     if (!pt) return;
     mousePosition.reset(pt.x, pt.y);
     for (const p of particles) {
-      if (mousePosition.subtractNew(p.pos).length < 24) {
+      if (mousePosition.subtractNew(p.pos).length < GRAB_RADIUS) {
         grabbedParticle = p;
-        grabbedParticle.originalPinnedState = grabbedParticle.pinned;
-        grabbedParticle.pinned = true;
+        grabbedPrevPinned = p.pinned;
+        p.pinned = true;
         onChime?.({
           x: pt.x,
           y: pt.y,
           particle: p,
           gridW,
-          intensity: 0.85,
+          intensity: GRAB_CHIME_INTENSITY,
           force: true
         });
         break;
@@ -516,7 +521,7 @@ export function createCloth(o) {
   const onPointerUp = (e) => {
     if (onPointerGuard?.(e) && !grabbedParticle) return;
     if (grabbedParticle) {
-      grabbedParticle.pinned = grabbedParticle.originalPinnedState;
+      grabbedParticle.pinned = grabbedPrevPinned;
       grabbedParticle = null;
     }
   };
