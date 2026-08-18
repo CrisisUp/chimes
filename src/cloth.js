@@ -211,8 +211,8 @@ class Constraint {
 function drawCode(ctx, particles, glyphs, originX, originY, dpr) {
   for (const p of particles) {
     if (!p.char || p.char === " " || p.char === "　") continue;
-    const img = glyphs[p.char];
-    if (!img) continue;
+    const glyph = glyphs.get(p.char);
+    if (!glyph) continue;
 
     let cos = 1;
     let sin = 0;
@@ -225,8 +225,7 @@ function drawCode(ctx, particles, glyphs, originX, originY, dpr) {
       sin = Math.sin(angle);
     }
 
-    const size = img._size;
-    const half = size / 2;
+    const half = glyph.size / 2;
     const x = p.pos.x + originX;
     const y = p.pos.y + originY;
     ctx.setTransform(
@@ -237,7 +236,7 @@ function drawCode(ctx, particles, glyphs, originX, originY, dpr) {
       x * dpr,
       y * dpr
     );
-    ctx.drawImage(img, -half, -half, size, size);
+    ctx.drawImage(glyph.canvas, -half, -half, glyph.size, glyph.size);
   }
 }
 
@@ -303,14 +302,13 @@ export function createCloth(o) {
   const canvasH = height + pad * 2;
 
   // Pre-render each unique glyph once (char → offscreen canvas).
-  const glyphs = {};
+  const glyphs = new Map();
   for (const ch of new Set(text)) {
     if (ch === " " || ch === "　") continue;
     const size = Math.ceil(fontSize * GLYPH_SCALE);
     const off = document.createElement("canvas");
     off.width = Math.ceil(size * dpr);
     off.height = Math.ceil(size * dpr);
-    off._size = size;
     const octx = off.getContext("2d");
     octx.setTransform(dpr, 0, 0, dpr, 0, 0);
     octx.font = `${fontSize}px ${font}`;
@@ -318,7 +316,7 @@ export function createCloth(o) {
     octx.textBaseline = "middle";
     octx.fillStyle = INK;
     octx.fillText(ch, size / 2, size / 2);
-    glyphs[ch] = off;
+    glyphs.set(ch, { canvas: off, size });
   }
 
   // Build the Verlet grid. Row 0 is pinned to the top edge (the "curtain rod").
@@ -382,6 +380,28 @@ export function createCloth(o) {
   let destroyed = false;
   let verticalConstraints = null; // lazily collected for setPhysics()
 
+  /**
+   * Apply the mouse force to every particle, then report the particle nearest
+   * to the cursor (within chime range) for a strike. Returns the nearest or null.
+   */
+  function applyMouseForce(pt, { chime = true } = {}) {
+    mousePosition.reset(pt.x, pt.y);
+    let nearest = null;
+    let nearestLs = Infinity;
+    for (const p of particles) {
+      const f = forceFor(p);
+      if (f) p.applyForce(f);
+      if (chime && onChime) {
+        const ls = mousePosition.subtractNew(p.pos).lengthSquared;
+        if (ls < chimeRadiusSq && ls < nearestLs) {
+          nearest = p;
+          nearestLs = ls;
+        }
+      }
+    }
+    return nearest ? { particle: nearest, intensity: 0.2 + (1 - nearestLs / chimeRadiusSq) * 0.7 } : null;
+  }
+
   function draw() {
     if (destroyed) return;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -425,28 +445,14 @@ export function createCloth(o) {
     if (!active || destroyed) return;
     const pt = localPoint(clientX, clientY);
     if (!pt) return;
-    mousePosition.reset(pt.x, pt.y);
-
-    let nearest = null;
-    let nearestLs = Infinity;
-    for (const p of particles) {
-      const f = forceFor(p);
-      if (f) p.applyForce(f);
-      if (chime && onChime) {
-        const ls = mousePosition.subtractNew(p.pos).lengthSquared;
-        if (ls < chimeRadiusSq && ls < nearestLs) {
-          nearest = p;
-          nearestLs = ls;
-        }
-      }
-    }
-    if (chime && onChime && nearest) {
+    const hit = applyMouseForce(pt, { chime });
+    if (hit) {
       onChime({
         x: pt.x,
         y: pt.y,
-        particle: nearest,
+        particle: hit.particle,
         gridW,
-        intensity: 0.2 + (1 - nearestLs / chimeRadiusSq) * 0.7
+        intensity: hit.intensity
       });
     }
   }
@@ -518,36 +524,25 @@ export function createCloth(o) {
     if (onPointerGuard?.(e) && !grabbedParticle) return;
     const pt = localPoint(e.clientX, e.clientY);
     if (!pt) return;
-    mousePosition.reset(pt.x, pt.y);
 
     if (grabbedParticle) {
       grabbedParticle.pos.reset(pt.x, pt.y);
       grabbedParticle.oldPos.reset(pt.x, pt.y);
     }
 
-    let nearest = null;
-    let nearestLs = Infinity;
-    for (const p of particles) {
-      const f = forceFor(p);
-      if (f) p.applyForce(f);
-      if (onChime) {
-        const ls = mousePosition.subtractNew(p.pos).lengthSquared;
-        if (ls < chimeRadiusSq && ls < nearestLs) {
-          nearest = p;
-          nearestLs = ls;
-        }
+    const hit = applyMouseForce(pt, { chime: true });
+    if (onChime) {
+      if (hit) {
+        onChime({
+          x: pt.x,
+          y: pt.y,
+          particle: hit.particle,
+          gridW,
+          intensity: hit.intensity
+        });
+      } else {
+        onChime({ x: pt.x, y: pt.y, reset: true });
       }
-    }
-    if (onChime && nearest) {
-      onChime({
-        x: pt.x,
-        y: pt.y,
-        particle: nearest,
-        gridW,
-        intensity: 0.2 + (1 - nearestLs / chimeRadiusSq) * 0.7
-      });
-    } else if (onChime) {
-      onChime({ x: pt.x, y: pt.y, reset: true });
     }
   };
 
@@ -588,7 +583,7 @@ export function createCloth(o) {
  * @param {object} o.country     a COUNTRIES entry
  * @param {{width:number,height:number}} o.area
  * @param {number} o.pad
- * @param {number} o.fontSize
+ * @param {number} [o.fontSize]     default derives from the grid so glyphs fit 0.95-cell
  * @param {string} o.font
  * @param {number} o.dpr
  * @param {object} o.config      the shared CONFIG (layout + inputs)
@@ -606,7 +601,6 @@ export function clothConfigFor(o) {
     country,
     area,
     pad,
-    fontSize,
     font,
     dpr,
     config,
@@ -615,6 +609,7 @@ export function clothConfigFor(o) {
     mode = "interact",
     onPointerGuard,
     chimeHandler,
+    fontSize = deriveFontSize(area.width, area.height, config.gridW, config.gridH),
     originX = pad + (area.width - config.width) / 2,
     originY = pad + Math.ceil(fontSize * 0.7)
   } = o;
@@ -658,4 +653,14 @@ export function clothConfigFor(o) {
 /** Clamp a glyph font size to the printable band used by every cloth. */
 export function clampFontSize(size) {
   return Math.max(MIN_FONT_SIZE, Math.min(MAX_FONT_SIZE, size));
+}
+
+/**
+ * Glyph size that fits the tightest cell of a grid, within the readable band.
+ * Contributions uses its own denser formula and overrides this default.
+ */
+export function deriveFontSize(width, height, gridW, gridH) {
+  const cellW = width / Math.max(1, gridW - 1);
+  const cellH = height / Math.max(1, gridH - 1);
+  return clampFontSize(Math.min(cellW, cellH) * 0.95);
 }

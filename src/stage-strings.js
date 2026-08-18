@@ -2,7 +2,6 @@
  * Stage 02 — China cloth only (no country switchers, carousel, or Tweakpane).
  */
 import {
-  clampFontSize,
   clothConfigFor,
   makeChimeHandler
 } from "./cloth.js";
@@ -36,7 +35,6 @@ const dpr = Math.min(2, window.devicePixelRatio || 1);
 
 const root = document.getElementById("container");
 const pad = STRINGS_PAD;
-const fontSize = clampFontSize(CONFIG.height / (CONFIG.gridH - 1) * 0.95);
 
 // Reduced motion: settle the cloth instantly instead of driving gravity.
 const reducedMotionQuery = window.matchMedia?.("(prefers-reduced-motion: reduce)");
@@ -48,7 +46,6 @@ const { cloth } = createCloth(
     country,
     area: { width: AREA_W, height: AREA_H },
     pad,
-    fontSize,
     font: country.font || FALLBACK_FONT,
     dpr,
     config: CONFIG,

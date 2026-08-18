@@ -63,6 +63,9 @@ const CHAR_ANIM_MS = 480;
 const DEFAULT_GRID_W = 36;
 const DEFAULT_GRID_H = 40;
 
+/** Physics for cloths that settle once then hang (carousel + contributions). */
+const SIMULATE_PHYSICS = { iterations: 4, settleFrames: 70 };
+
 let currentCountryId = DEFAULT_COUNTRY;
 let transitioning = false;
 let countryBinding = null;
@@ -738,9 +741,6 @@ function main() {
       country,
       area: { width: AREA_W, height: AREA_H },
       pad: STRINGS_PAD,
-      fontSize: clampFontSize(
-        (CONFIG.height / (CONFIG.gridH - 1)) * 0.95
-      ),
       font: country.font || FALLBACK_FONT,
       dpr,
       config: CONFIG,
@@ -918,16 +918,12 @@ let carousel = null;
 function createCarouselCloth(host, country) {
   if (!host || !country) return null;
 
-  const gridH = country.gridH ?? DEFAULT_GRID_H;
-  const fontSize = clampFontSize((AREA_H / (gridH - 1)) * 0.95);
-
   const cloth = createCloth(
     clothConfigFor({
       host,
       country,
       area: { width: AREA_W, height: AREA_H },
       pad: STRINGS_PAD,
-      fontSize,
       font: country.font || FALLBACK_FONT,
       dpr,
       config: {
@@ -935,11 +931,11 @@ function createCarouselCloth(host, country) {
         width: AREA_W,
         height: AREA_H,
         gridW: country.gridW ?? DEFAULT_GRID_W,
-        gridH,
+        gridH: country.gridH ?? DEFAULT_GRID_H,
         contain: false
       },
       reducedMotion: prefersReducedMotion,
-      physicsOverrides: { iterations: 4, settleFrames: 70 },
+      physicsOverrides: SIMULATE_PHYSICS,
       mode: "simulate",
       chimeHandler: ({ x, y, particle, gridW: g, intensity }) => {
         chimes.setCountry(country.id);
@@ -969,12 +965,12 @@ function createContributionsCloth(host, names, cssW, cssH, gridFn) {
   const height = Math.max(80, cssH);
   const pad = 56;
   const grid = (gridFn || CONTRIB_FALLBACK.contributionsGrid)(names, width);
-  const cellWidth = width / Math.max(1, grid.gridW - 1);
-  const cellHeight = height / Math.max(1, grid.gridH - 1);
   const fontSize = clampFontSize(
-    Math.min(cellWidth * 0.95, cellHeight * 0.85)
+    Math.min(
+      (width / Math.max(1, grid.gridW - 1)) * 0.95,
+      (height / Math.max(1, grid.gridH - 1)) * 0.85
+    )
   );
-
   return createCloth(
     clothConfigFor({
       host,
@@ -993,7 +989,7 @@ function createContributionsCloth(host, names, cssW, cssH, gridFn) {
         contain: false
       },
       reducedMotion: prefersReducedMotion,
-      physicsOverrides: { iterations: 4, settleFrames: 70 },
+      physicsOverrides: SIMULATE_PHYSICS,
       mode: "simulate",
       originX: pad,
       originY: pad + Math.ceil(fontSize * 0.35)
