@@ -23,7 +23,13 @@
  * Voice accounting stays in sync with real playback instead of a setTimeout.
  */
 function releaseVoiceOnEnd(source, onEnd) {
-  source.onended = onEnd;
+  source.onended = () => {
+    clearTimeout(source.__timeout);
+    source.__timeout = 0;
+    onEnd();
+  };
+  // Backstop: if the tab is backgrounded and `onended` never fires, still let go.
+  source.__timeout = setTimeout(onEnd, 2000);
 }
 
 /** @type {Record<string, ChimeProfile>} */
@@ -449,7 +455,15 @@ export class StringChimes {
     voice.connect(this.master);
 
     this.activeVoices += 1;
-    let voicesClosing = 0; // partials + noise that must end before this strike may release
+    // One shared close counter per strike: release the voice limit only when
+    // every partial of THIS strike (osc + noise) has actually stopped.
+    let voicesClosing = 1 + profile.partials.length; // noise + each partial
+    const releaseOne = () => {
+      voicesClosing--;
+      if (voicesClosing === 0) {
+        this.activeVoices = Math.max(0, this.activeVoices - 1);
+      }
+    };
 
     for (const { ratio, gain } of profile.partials) {
       const osc = ctx.createOscillator();
@@ -466,7 +480,7 @@ export class StringChimes {
       g.connect(voice);
       osc.start(t);
       osc.stop(t + duration + 0.02);
-      releaseVoiceOnEnd(osc, () => voicesClosing--);
+      releaseVoiceOnEnd(osc, releaseOne);
     }
 
     const noiseDur = profile.noiseDur;
@@ -496,12 +510,7 @@ export class StringChimes {
     noiseGain.connect(voice);
     noise.start(t);
     noise.stop(t + noiseDur + 0.01);
-    releaseVoiceOnEnd(noise, () => {
-      voicesClosing--;
-      if (voicesClosing === 0) {
-        this.activeVoices = Math.max(0, this.activeVoices - 1);
-      }
-    });
+    releaseVoiceOnEnd(noise, releaseOne);
   }
 }
 
