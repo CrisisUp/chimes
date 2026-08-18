@@ -3,6 +3,7 @@ import {
   clampFontSize,
   clothConfigFor,
   createCloth,
+  effectiveDPR,
   makeChimeHandler
 } from "./cloth.js";
 import {
@@ -712,7 +713,7 @@ function isPaneEvent(e) {
 }
 
 let homeCloth = null;
-const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+const dpr = effectiveDPR();
 
 // Reduced motion detection
 const reducedMotionQuery = window.matchMedia?.("(prefers-reduced-motion: reduce)");

@@ -3,6 +3,7 @@
  */
 import {
   clothConfigFor,
+  effectiveDPR,
   makeChimeHandler
 } from "./cloth.js";
 import { COUNTRY_MAP, DEFAULT_COUNTRY, FALLBACK_FONT } from "./countries.js";
@@ -31,7 +32,7 @@ const CONFIG = {
   contain: false
 };
 
-const dpr = Math.min(2, window.devicePixelRatio || 1);
+const dpr = effectiveDPR();
 
 const root = document.getElementById("container");
 const pad = STRINGS_PAD;

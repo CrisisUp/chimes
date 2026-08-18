@@ -669,3 +669,16 @@ export function deriveFontSize(width, height, gridW, gridH) {
   const cellH = height / Math.max(1, gridH - 1);
   return clampFontSize(Math.min(cellW, cellH) * 0.95);
 }
+
+/**
+ * DPR to render canvases at: the physical pixels are capped per viewport width
+ * so small screens don't allocate 4k buffers for a 200px cloth (an iPhone DPR 3
+ * home/carousel stack hit ~800MB of canvas RAM). Desktop keeps its full DPR.
+ */
+export function effectiveDPR() {
+  const base = Math.max(1, window.devicePixelRatio || 1);
+  const w = window.innerWidth || 0;
+  if (w < 560) return Math.min(base, 1.5);
+  if (w < 960) return Math.min(base, 2);
+  return base;
+}
