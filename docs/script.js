@@ -921,6 +921,10 @@ function carouselGapPx() {
   // side items, which made spacing collapse whenever Vietnam wasn't centered.
   const w = sample?.offsetWidth || sample?.getBoundingClientRect?.().width;
   if (!w || !Number.isFinite(w) || w < 8) return CAROUSEL_GAP_DESKTOP;
+  // On narrow screens the desktop 575/492 ratio leaves the side items almost
+  // fully off-screen (a 226px center + 264px gap > 390px viewport). Use a gap
+  // that keeps a sliver of each neighbor visible so they stay reachable.
+  if (window.innerWidth < 560) return w * 0.68;
   return (CAROUSEL_GAP_DESKTOP / CAROUSEL_AREA_DESKTOP) * w;
 }
 
