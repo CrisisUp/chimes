@@ -35,6 +35,41 @@
   font-display: swap;
 }
 
+/* Reduced motion — disable non-essential animation/physics */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+  }
+
+  .scene,
+  .bottom-copy .eyebrow,
+  .bottom-copy .aside,
+  .bottom-copy .heading h1 .char {
+    transition: none !important;
+  }
+
+  .scene.is-animating {
+    pointer-events: auto;
+  }
+
+  .country-btn,
+  .chat-btn,
+  .menu a,
+  .about-btn,
+  .about__close,
+  .contributions__input,
+  .contributions__submit,
+  .about__links a,
+  .carousel__item {
+    transition: none !important;
+  }
+}
+
 * {
   box-sizing: border-box;
 }
@@ -1595,10 +1630,10 @@ body {
     --area-w: 58vw;
     --area-h: calc(var(--area-w) * 468 / 492);
     --strings-pad: calc(420 / 492 * var(--area-w));
-    /* Room for eyebrow + multi-line title, then a clear gap to the scene */
-    /* Fallback until JS pins area 64px above eyebrow (layoutAreaAboveCopy) */
-    --heading-reserve: 142px;
-    --copy-gap: 64px;
+    /* Room for eyebrow + multi-line title + aside-block, then a clear gap to the scene */
+    /* Fallback until JS pins area above bottom-copy (layoutAreaAboveCopy) */
+    --heading-reserve: 220px;
+    --copy-gap: 72px;
   }
 
   .topbar {

@@ -327,6 +327,12 @@ export class StringChimes {
     this.prevY = 0;
   }
 
+  static async create() {
+    const chimes = new StringChimes();
+    await chimes.ensure();
+    return chimes;
+  }
+
   setCountry(id) {
     this.countryId = id;
     this.profile = COUNTRY_CHIMES[id] || FALLBACK;

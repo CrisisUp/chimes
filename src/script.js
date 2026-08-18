@@ -202,6 +202,12 @@ function setCountryImmediate(id) {
 async function transitionTo(id, direction) {
   if (!COUNTRIES[id] || id === currentCountryId || transitioning) return;
 
+  // Respect reduced motion
+  if (prefersReducedMotion) {
+    setCountryImmediate(id);
+    return;
+  }
+
   transitioning = true;
   updateSideButtons();
 
@@ -262,12 +268,10 @@ async function transitionTo(id, direction) {
 
 function setCountry(id, opts = {}) {
   if (!COUNTRIES[id]) return;
-  const reducedMotion =
-    window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
   if (
     opts.animate === false ||
     id === currentCountryId ||
-    reducedMotion
+    prefersReducedMotion
   ) {
     setCountryImmediate(id);
     return;
@@ -477,11 +481,23 @@ function setAboutOpen(open) {
     aboutBtn?.setAttribute("aria-expanded", "true");
     const closeBtn = document.getElementById("aboutClose");
     (closeBtn || aboutModal).focus?.();
+    // Focus trap
+    requestAnimationFrame(() => {
+      const focusable = aboutModal.querySelectorAll(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusable.length) {
+        aboutModal._firstFocusable = focusable[0];
+        aboutModal._lastFocusable = focusable[focusable.length - 1];
+      }
+    });
   } else {
     aboutModal.hidden = true;
     aboutModal.setAttribute("hidden", "");
     aboutModal.setAttribute("aria-hidden", "true");
     aboutBtn?.setAttribute("aria-expanded", "false");
+    aboutModal._firstFocusable = null;
+    aboutModal._lastFocusable = null;
     const restore = aboutLastFocus;
     aboutLastFocus = null;
     if (restore && typeof restore.focus === "function") {
@@ -647,6 +663,21 @@ if (contributionsClothHost && typeof ResizeObserver !== "undefined") {
 }
 
 window.addEventListener("keydown", (e) => {
+  // Focus trap for About modal
+  if (isAboutOpen() && e.key === "Tab") {
+    const first = aboutModal._firstFocusable;
+    const last = aboutModal._lastFocusable;
+    if (first && last) {
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+  }
+
   if (e.key === "`") setPaneOpen(pane.hidden);
   if (e.key === "Escape") {
     if (isAboutOpen()) {
@@ -674,12 +705,34 @@ function isPaneEvent(e) {
 let homeCloth = null;
 const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
 
+// Reduced motion detection
+const reducedMotionQuery = window.matchMedia?.("(prefers-reduced-motion: reduce)");
+let prefersReducedMotion = reducedMotionQuery?.matches ?? false;
+
+if (reducedMotionQuery?.addEventListener) {
+  reducedMotionQuery.addEventListener("change", (e) => {
+    prefersReducedMotion = e.matches;
+    // Re-render cloths with new setting
+    rerender();
+    if (carousel) {
+      carousel.layout();
+    }
+    refreshContributionsCloth();
+  });
+}
+
 function main() {
   const country = getCountry();
   const { gridW, gridH } = CONFIG;
   const cellHeight = CONFIG.height / (gridH - 1);
   const pad = STRINGS_PAD;
   const fontSize = Math.max(9, Math.min(14, cellHeight * 0.95));
+
+  // Respect reduced motion: disable physics, use instant settle
+  const gravity = prefersReducedMotion ? 0 : CONFIG.gravity;
+  const damping = prefersReducedMotion ? 1 : CONFIG.damping;
+  const iterations = prefersReducedMotion ? 1 : CONFIG.iterationsPerFrame;
+  const settleFrames = prefersReducedMotion ? 60 : 0; // pre-settle so cloth hangs naturally
 
   homeCloth = createCloth({
     host: document.getElementById("container"),
@@ -697,16 +750,16 @@ function main() {
       country.font ||
       '"Songti SC", "STSong", "Noto Serif SC", "Hiragino Mincho ProN", serif',
     dpr,
-    gravity: CONFIG.gravity,
-    damping: CONFIG.damping,
-    iterations: CONFIG.iterationsPerFrame,
+    gravity,
+    damping,
+    iterations,
     compressFactor: CONFIG.compressFactor,
     stretchFactor: CONFIG.stretchFactor,
     contain: CONFIG.contain,
     mouseSize: CONFIG.mouseSize,
     mouseStrength: CONFIG.mouseStrength,
     mode: "interact",
-    settleFrames: 0,
+    settleFrames,
     onPointerGuard: isPaneEvent,
     onChime: ({ x, y, particle, gridW: g, intensity, force, reset }) => {
       if (!reset) {
@@ -740,6 +793,18 @@ function initViews() {
       if (centered && centered !== currentCountryId) {
         setCountry(centered, { animate: false });
       }
+    }
+
+    // Pause/resume home cloth simulation
+    if (prev === "home" && next !== "home") {
+      if (homeSimRaf) {
+        cancelAnimationFrame(homeSimRaf);
+        homeSimRaf = 0;
+      }
+    }
+    if (next === "home" && prev !== "home") {
+      lastHomeSim = performance.now();
+      homeSimRaf = requestAnimationFrame(homeSimLoop);
     }
 
     if (prev === "contributions" && next !== "contributions") {
@@ -792,14 +857,14 @@ function initViews() {
 }
 
 /** Mobile: pin home area a fixed gap above the eyebrow. */
-const AREA_COPY_GAP_PX = 64;
+const AREA_COPY_GAP_PX = 72;
 
 function layoutAreaAboveCopy() {
   const stage = document.getElementById("stage");
   const area = document.getElementById("area");
-  const eyebrow = document.querySelector(".eyebrow");
+  const bottomCopy = document.getElementById("bottomCopy");
   const carouselVp = document.getElementById("carouselViewport");
-  if (!stage || !area || !eyebrow) return;
+  if (!stage || !area || !bottomCopy) return;
 
   const mobile = window.matchMedia("(max-width: 960px)").matches;
   if (!mobile) {
@@ -824,9 +889,10 @@ function layoutAreaAboveCopy() {
   }
 
   const stageRect = stage.getBoundingClientRect();
-  const eyebrowTop = eyebrow.getBoundingClientRect().top - stageRect.top;
+  // Use bottom-copy bottom edge (includes heading + aside-block)
+  const copyBottom = bottomCopy.getBoundingClientRect().bottom - stageRect.top;
   // CSS `bottom` = distance from stage bottom to the area’s bottom edge
-  const bottom = Math.max(0, stageRect.height - eyebrowTop + AREA_COPY_GAP_PX);
+  const bottom = Math.max(0, stageRect.height - copyBottom + AREA_COPY_GAP_PX);
   area.style.top = "auto";
   area.style.bottom = `${bottom}px`;
   if (carouselVp && stage.dataset.view !== "destinations") {
@@ -840,9 +906,9 @@ function bindAreaCopyLayout() {
   run();
   window.addEventListener("resize", run);
   window.addEventListener("orientationchange", run);
-  const copy = document.getElementById("bottomCopy");
-  if (copy && typeof ResizeObserver !== "undefined") {
-    new ResizeObserver(run).observe(copy);
+  const bottomCopy = document.getElementById("bottomCopy");
+  if (bottomCopy && typeof ResizeObserver !== "undefined") {
+    new ResizeObserver(run).observe(bottomCopy);
   }
   document.fonts?.ready?.then?.(run);
 }
@@ -879,6 +945,12 @@ function createCarouselCloth(host, country) {
   const cellHeight = height / (gridH - 1);
   const fontSize = Math.max(9, Math.min(14, cellHeight * 0.95));
 
+  // Respect reduced motion
+  const gravity = prefersReducedMotion ? 0 : 0.2;
+  const damping = prefersReducedMotion ? 1 : 0.99;
+  const iterations = prefersReducedMotion ? 1 : 4;
+  const settleFrames = prefersReducedMotion ? 60 : 70;
+
   const cloth = createCloth({
     host,
     text: country.cloth || "",
@@ -895,8 +967,10 @@ function createCarouselCloth(host, country) {
       country.font ||
       '"Songti SC", "STSong", "Noto Serif SC", "Hiragino Mincho ProN", serif',
     dpr,
-    iterations: 4,
-    settleFrames: 70,
+    gravity,
+    damping,
+    iterations,
+    settleFrames,
     onChime: ({ x, y, particle, gridW: g, intensity }) => {
       chimes.setCountry(country.id);
       chimes.strike({ x, y, particle, gridW: g, intensity });
@@ -933,6 +1007,12 @@ function createContributionsCloth(host, names, cssW, cssH, gridFn) {
     Math.min(14, Math.min(cellWidth * 0.95, cellHeight * 0.85))
   );
 
+  // Respect reduced motion
+  const gravity = prefersReducedMotion ? 0 : 0.2;
+  const damping = prefersReducedMotion ? 1 : 0.99;
+  const iterations = prefersReducedMotion ? 1 : 4;
+  const settleFrames = prefersReducedMotion ? 60 : 70;
+
   return createCloth({
     host,
     text: grid.cloth,
@@ -947,8 +1027,10 @@ function createContributionsCloth(host, names, cssW, cssH, gridFn) {
     originY: pad + Math.ceil(fontSize * 0.35),
     font: grid.font,
     dpr,
-    iterations: 4,
-    settleFrames: 70
+    gravity,
+    damping,
+    iterations,
+    settleFrames
   });
 }
 
@@ -1051,6 +1133,15 @@ function initCarousel() {
 
   function animateTo(target, duration = CAROUSEL_SNAP_MS) {
     cancelAnimationFrame(animRaf);
+    // Respect reduced motion
+    if (prefersReducedMotion) {
+      let delta = wrapDelta(target - index);
+      const from = index;
+      const to = from + delta;
+      index = nearestIndex(to);
+      layout();
+      return;
+    }
     let delta = wrapDelta(target - index);
     const from = index;
     const to = from + delta;
@@ -1254,6 +1345,17 @@ updateSideButtons();
 initCarousel();
 initViews();
 bindAreaCopyLayout();
+
+/* ─── Home cloth simulation loop (settle + hover sway) ─── */
+let homeSimRaf = 0;
+let lastHomeSim = performance.now();
+function homeSimLoop(now) {
+  homeSimRaf = requestAnimationFrame(homeSimLoop);
+  const dt = Math.min(32, Math.max(1, now - lastHomeSim));
+  lastHomeSim = now;
+  if (homeCloth) homeCloth.tick(dt);
+}
+homeSimRaf = requestAnimationFrame(homeSimLoop);
 
 document.getElementById("btnLeft")?.addEventListener("click", () => {
   const id = document.getElementById("btnLeft")?.dataset.country;
