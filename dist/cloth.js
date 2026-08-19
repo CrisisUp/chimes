@@ -427,12 +427,35 @@ export function createCloth(o) {
       for (const c of constraints) c.solve();
     }
     if (contain) particles.forEach((p) => p.contain(width, height));
+    return movedEnough();
+  }
+
+  /**
+   * True when a visible amount of the cloth moved this step, so the renderer
+   * can skip repainting a settled cloth. Every RUNNING particle is sampled;
+   * a 1440-particle grid gives ~1-2 extra Math.hypot's per pass, cheap.
+   * Sub-pixel drift (a settled cloth) stays under the threshold.
+   */
+  function movedEnough() {
+    let moved = 0;
+    for (const p of particles) {
+      if (p.pinned) continue;
+      const dx = p.pos.x - p.oldPos.x;
+      const dy = p.pos.y - p.oldPos.y;
+      const d2 = dx * dx + dy * dy;
+      moved += d2 >= 4 ? 1 : 0; // per-particle threshold: 2px
+    }
+    // Only repaint when enough of the cloth is visibly in motion — a settled
+    // cloth keeps micro-swaying, but redrawing it still costs a full paint.
+    return moved >= 3;
   }
 
   function tick(dt) {
     if (!active || destroyed) return;
-    step(dt);
-    draw();
+    // Physics always runs so the cloth stays alive; only repaint when something
+    // actually moved — a settled cloth redraws nothing, which on a phone is the
+    // difference between constant ~17ms frames and near-zero idle cost.
+    if (step(dt)) draw();
   }
 
   function localPoint(clientX, clientY) {
