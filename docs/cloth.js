@@ -156,6 +156,10 @@ class Particle {
   applyForce(v) {
     this.acceleration.add(v);
   }
+  applyForceTo(fx, fy) {
+    this.acceleration.x += fx;
+    this.acceleration.y += fy;
+  }
 }
 
 class Constraint {
@@ -386,6 +390,7 @@ export function createCloth(o) {
   ctx.imageSmoothingQuality = "high";
 
   const mousePosition = new Vec2();
+  const scratch = new Vec2(); // reused per-particle — zero allocation in the hot loop
   const chimeRadiusSq = CHIME_RADIUS * CHIME_RADIUS;
   let active = true;
   let destroyed = false;
@@ -394,20 +399,26 @@ export function createCloth(o) {
   /**
    * Apply the mouse force to every particle, then report the particle nearest
    * to the cursor (within chime range) for a strike. Returns the nearest or null.
+   * Zero-allocation: a single `scratch` Vec2 is reused across all particles.
    */
   function applyMouseForce(pt, { chime = true } = {}) {
     mousePosition.reset(pt.x, pt.y);
     let nearest = null;
     let nearestLs = Infinity;
     for (const p of particles) {
-      const f = forceFor(p);
-      if (f) p.applyForce(f);
-      if (chime && onChime) {
-        const ls = mousePosition.subtractNew(p.pos).lengthSquared;
-        if (ls < chimeRadiusSq && ls < nearestLs) {
-          nearest = p;
-          nearestLs = ls;
-        }
+      scratch.reset(
+        mousePosition.x - p.pos.x,
+        mousePosition.y - p.pos.y
+      );
+      const ls = scratch.lengthSquared;
+      if (ls < mouseSize) {
+        const a = scratch.angle - Math.PI;
+        const strength = (smoothstep(mouseSize, -2000, ls) * mouseStrength) / 300;
+        p.applyForceTo(Math.cos(a) * strength, Math.sin(a) * strength);
+      }
+      if (chime && onChime && ls < chimeRadiusSq && ls < nearestLs) {
+        nearest = p;
+        nearestLs = ls;
       }
     }
     return nearest ? { particle: nearest, intensity: CHIME_INTENSITY_FLOOR + (1 - nearestLs / chimeRadiusSq) * CHIME_INTENSITY_SPAN } : null;
@@ -465,15 +476,6 @@ export function createCloth(o) {
       x: ((clientX - rect.left) / rect.width) * canvasW - originX,
       y: ((clientY - rect.top) / rect.height) * canvasH - originY
     };
-  }
-
-  function forceFor(particle) {
-    const diff = mousePosition.subtractNew(particle.pos);
-    const ls = diff.lengthSquared;
-    if (ls >= mouseSize) return null;
-    const a = diff.angle - Math.PI;
-    const strength = (smoothstep(mouseSize, -2000, ls) * mouseStrength) / 300;
-    return new Vec2(Math.cos(a) * strength, Math.sin(a) * strength);
   }
 
   function brush(clientX, clientY, { chime = true } = {}) {
