@@ -39,6 +39,10 @@
   box-sizing: border-box;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 html,
 body {
   margin: 0;
@@ -607,10 +611,8 @@ body {
 
 .strings canvas {
   display: block;
-  /* Must fill .strings — inline style from sizeCanvas would otherwise keep
-     desktop px and misalign cloth under a scaled mobile area. */
-  width: 100% !important;
-  height: 100% !important;
+  width: 100%;
+  height: 100%;
   pointer-events: auto;
 }
 
@@ -786,10 +788,6 @@ body {
 }
 
 /* ─── About modal ─── */
-.about[hidden] {
-  display: none !important;
-}
-
 .about {
   position: fixed;
   inset: 0;
@@ -986,10 +984,6 @@ body {
   border: 0;
 }
 
-.contributions[hidden] {
-  display: none !important;
-}
-
 .stage[data-view="contributions"] .area,
 .stage[data-view="contributions"] .country-btn,
 .stage[data-view="contributions"] .bottom-copy {
@@ -1134,10 +1128,6 @@ body {
   color: var(--ink-muted);
 }
 
-.contributions__hint[hidden] {
-  display: none !important;
-}
-
 .contributions__stage {
   position: relative;
   z-index: 1;
@@ -1165,10 +1155,6 @@ body {
   pointer-events: none;
 }
 
-.contributions__empty[hidden] {
-  display: none !important;
-}
-
 .contributions__cloth {
   /* Match main .strings: oversized host so sway isn't cropped. */
   --pad: 56px;
@@ -1184,8 +1170,8 @@ body {
 
 .contributions__cloth canvas {
   display: block;
-  width: 100% !important;
-  height: 100% !important;
+  width: 100%;
+  height: 100%;
   pointer-events: auto;
 }
 
@@ -1307,10 +1293,6 @@ body {
   inset: 0;
   z-index: 5;
   overflow: hidden;
-}
-
-.destinations[hidden] {
-  display: none !important;
 }
 
 .carousel {

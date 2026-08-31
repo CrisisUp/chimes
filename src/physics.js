@@ -20,8 +20,9 @@ import * as K from "./modules/constants.js";
 export function sizeCanvas(canvas, cssW, cssH, dpr) {
   canvas.width = Math.round(cssW * dpr);
   canvas.height = Math.round(cssH * dpr);
-  canvas.style.width = `${cssW}px`;
-  canvas.style.height = `${cssH}px`;
+  // Display size is controlled by CSS (width/height: 100% in style.css).
+  // Do NOT set inline style.width/height — it overrides the stylesheet
+  // and forces !important to compensate.
 }
 
 export class Vec2 {
