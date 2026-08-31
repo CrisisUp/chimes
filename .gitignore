@@ -10,4 +10,7 @@ public/
 dist/
 docs/
 coverage/
+test-results/
+playwright-report/
+*-snapshots/
 *.webp-report.json
