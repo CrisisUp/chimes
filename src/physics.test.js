@@ -158,13 +158,15 @@ describe('physics.js', () => {
   });
 
   describe('sizeCanvas', () => {
-    it('sets canvas dimensions and style', () => {
+    it('sets canvas backing-store dimensions (display size via CSS)', () => {
       const canvas = document.createElement('canvas');
       sizeCanvas(canvas, 100, 200, 2);
       expect(canvas.width).toBe(200);
       expect(canvas.height).toBe(400);
-      expect(canvas.style.width).toBe('100px');
-      expect(canvas.style.height).toBe('200px');
+      // Display size is now controlled by CSS (width/height: 100%),
+      // not by inline styles — so style.width/height remain empty.
+      expect(canvas.style.width).toBe('');
+      expect(canvas.style.height).toBe('');
     });
 
     it('applies dpr scaling', () => {
