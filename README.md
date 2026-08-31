@@ -2,7 +2,8 @@
 
 Interactive portfolio experience by [Marina Budarina](https://budarina.design): country roofs, letter-cloth physics, destinations carousel, and chimes.
 
-**Marina Budarina**
+## Marina Budarina
+
 - Site: [budarina.design](https://budarina.design)
 - Instagram: [instagram.com/marina_uiux](https://www.instagram.com/marina_uiux/)
 - X: [x.com/marina_uiux](https://x.com/marina_uiux)
