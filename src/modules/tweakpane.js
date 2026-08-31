@@ -42,17 +42,24 @@ function persistCountryConfigs() {
   }
 }
 
-function snapshotToCountry(countryId) {
+function snapshotToCountry(cfg, countryId) {
   const snap = {};
-  for (const key of PER_COUNTRY_KEYS) snap[key] = CONFIG[key];
+  for (const key of PER_COUNTRY_KEYS) snap[key] = cfg[key];
   countryConfigs.set(countryId, snap);
   persistCountryConfigs();
 }
 
-function applyOverrides(countryId) {
+function resetToDefaults(cfg) {
+  for (const key of PER_COUNTRY_KEYS) {
+    cfg[key] = K.DEFAULT_PHYSICS[key];
+  }
+}
+
+function applyOverrides(cfg, countryId) {
+  resetToDefaults(cfg);
   const overrides = countryConfigs.get(countryId) || {};
   for (const key of PER_COUNTRY_KEYS) {
-    if (key in overrides) CONFIG[key] = overrides[key];
+    if (key in overrides) cfg[key] = overrides[key];
   }
 }
 
@@ -77,7 +84,7 @@ export function initTweakpane({ rerender, onCountryChange }) {
   };
 
   loadAllCountryConfigs();
-  applyOverrides(CONFIG.country);
+  applyOverrides(CONFIG, CONFIG.country);
 
   const pane = new Pane({ title: "Play" });
   pane.hidden = true;
@@ -93,9 +100,9 @@ export function initTweakpane({ rerender, onCountryChange }) {
       )
     })
     .on("change", (ev) => {
-      snapshotToCountry(CONFIG.country);
+      snapshotToCountry(CONFIG, CONFIG.country);
       onCountryChange(ev.value);
-      applyOverrides(ev.value);
+      applyOverrides(CONFIG, ev.value);
       refreshPhysicsBindings();
     });
 
@@ -248,11 +255,11 @@ export function initTweakpane({ rerender, onCountryChange }) {
 
   /* Per-country config helpers (called by navigation.js) */
   initTweakpane.applyCountryConfig = (countryId) => {
-    applyOverrides(countryId);
+    applyOverrides(CONFIG, countryId);
     refreshPhysicsBindings();
   };
   initTweakpane.saveCountryConfig = () => {
-    snapshotToCountry(CONFIG.country);
+    snapshotToCountry(CONFIG, CONFIG.country);
   };
 
   return CONFIG;
