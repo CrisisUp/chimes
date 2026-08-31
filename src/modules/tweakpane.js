@@ -8,6 +8,57 @@ import * as K from "./constants.js";
 import { COUNTRIES } from "../countries.js";
 import { chimes } from "../chimes.js";
 
+/* ── Per-country physics store ────────────────────────────────────────────── */
+const STORAGE_KEY = "budarina-country-configs";
+const countryConfigs = new Map(); // countryId → { gravity, damping, ... }
+
+const PER_COUNTRY_KEYS = [
+  "gravity",
+  "damping",
+  "iterationsPerFrame",
+  "compressFactor",
+  "stretchFactor",
+  "mouseSize",
+  "mouseStrength"
+];
+
+function loadAllCountryConfigs() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const obj = JSON.parse(raw);
+      for (const [k, v] of Object.entries(obj)) countryConfigs.set(k, v);
+    }
+  } catch (_) {
+    /* ignore */
+  }
+}
+
+function persistCountryConfigs() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(Object.fromEntries(countryConfigs)));
+  } catch (_) {
+    /* ignore */
+  }
+}
+
+function snapshotToCountry(countryId) {
+  const snap = {};
+  for (const key of PER_COUNTRY_KEYS) snap[key] = CONFIG[key];
+  countryConfigs.set(countryId, snap);
+  persistCountryConfigs();
+}
+
+function applyOverrides(countryId) {
+  const overrides = countryConfigs.get(countryId) || {};
+  for (const key of PER_COUNTRY_KEYS) {
+    if (key in overrides) CONFIG[key] = overrides[key];
+  }
+}
+
+/* Will be set below after CONFIG + pane exist */
+let _physicsBindings = [];
+
 /**
  * @param {{ rerender: () => void, onCountryChange: (id: string) => void }} deps
  * @returns {object} CONFIG — the shared physics/rendering config object
@@ -25,6 +76,9 @@ export function initTweakpane({ rerender, onCountryChange }) {
     chimeVolume: K.DEFAULT_CHIME_VOLUME
   };
 
+  loadAllCountryConfigs();
+  applyOverrides(CONFIG.country);
+
   const pane = new Pane({ title: "Play" });
   pane.hidden = true;
   pane.element.classList.add("budarina-pane");
@@ -39,7 +93,10 @@ export function initTweakpane({ rerender, onCountryChange }) {
       )
     })
     .on("change", (ev) => {
+      snapshotToCountry(CONFIG.country);
       onCountryChange(ev.value);
+      applyOverrides(ev.value);
+      refreshPhysicsBindings();
     });
 
   /* ── Cloth folder ── */
@@ -76,48 +133,58 @@ export function initTweakpane({ rerender, onCountryChange }) {
 
   /* ── Motion & sound folder ── */
   const fFeel = pane.addFolder({ title: "Motion & sound", expanded: true });
-  fFeel.addBinding(CONFIG, "gravity", {
+  const gravityBinding = fFeel.addBinding(CONFIG, "gravity", {
     step: 0.05,
     min: 0,
     max: 2,
     label: "Gravity"
   });
-  fFeel.addBinding(CONFIG, "damping", {
+  const dampingBinding = fFeel.addBinding(CONFIG, "damping", {
     step: 0.001,
     min: 0.5,
     max: 1.02,
     label: "Damping"
   });
-  fFeel.addBinding(CONFIG, "iterationsPerFrame", {
+  const precisionBinding = fFeel.addBinding(CONFIG, "iterationsPerFrame", {
     step: 1,
     min: 1,
     max: 20,
     label: "Precision"
   });
-  fFeel.addBinding(CONFIG, "stretchFactor", {
+  const stretchBinding = fFeel.addBinding(CONFIG, "stretchFactor", {
     step: 0.01,
     min: 1.0,
     max: 2.0,
     label: "Stretch"
   });
-  fFeel.addBinding(CONFIG, "compressFactor", {
+  const compressBinding = fFeel.addBinding(CONFIG, "compressFactor", {
     step: 0.01,
     min: 0.01,
     max: 1.0,
     label: "Compress"
   });
-  fFeel.addBinding(CONFIG, "mouseSize", {
+  const mouseSizeBinding = fFeel.addBinding(CONFIG, "mouseSize", {
     step: 1,
     min: 100,
     max: 10000,
     label: "Touch radius"
   });
-  fFeel.addBinding(CONFIG, "mouseStrength", {
+  const mouseStrengthBinding = fFeel.addBinding(CONFIG, "mouseStrength", {
     step: 1,
     min: 1,
     max: 10,
     label: "Touch force"
   });
+
+  _physicsBindings = [
+    gravityBinding,
+    dampingBinding,
+    precisionBinding,
+    stretchBinding,
+    compressBinding,
+    mouseSizeBinding,
+    mouseStrengthBinding
+  ];
   fFeel.addBinding(CONFIG, "chimes", { label: "Door chimes" }).on(
     "change",
     (ev) => {
@@ -153,6 +220,13 @@ export function initTweakpane({ rerender, onCountryChange }) {
     try { gridHBinding?.refresh(); } catch (_) { /* ignore */ }
   }
 
+  /* ── Physics binding refresh (sync sliders after per-country load) ── */
+  function refreshPhysicsBindings() {
+    for (const b of _physicsBindings) {
+      try { b?.refresh(); } catch (_) { /* ignore */ }
+    }
+  }
+
   /* ── Pointer event guard ── */
   function isPaneEvent(e) {
     return !!(
@@ -171,6 +245,15 @@ export function initTweakpane({ rerender, onCountryChange }) {
   initTweakpane.setPaneOpen = setPaneOpen;
   initTweakpane.isPaneEvent = isPaneEvent;
   initTweakpane.refreshGridBindings = refreshGridBindings;
+
+  /* Per-country config helpers (called by navigation.js) */
+  initTweakpane.applyCountryConfig = (countryId) => {
+    applyOverrides(countryId);
+    refreshPhysicsBindings();
+  };
+  initTweakpane.saveCountryConfig = () => {
+    snapshotToCountry(CONFIG.country);
+  };
 
   return CONFIG;
 }

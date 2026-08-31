@@ -12,6 +12,7 @@ import {
 } from "../countries.js";
 import { applyCountryCopy, copyEnterDuration } from "./copy.js";
 import { chimes } from "../chimes.js";
+import { initTweakpane } from "./tweakpane.js";
 
 const STORAGE_KEY = "budarina-country";
 
@@ -100,6 +101,8 @@ export function initNavigation({ config, refreshBindings, rerender, onLayout }) 
 
   function setCountryImmediate(id) {
     if (!COUNTRIES[id]) return;
+    /* Save per-country physics config for the outgoing country */
+    initTweakpane.saveCountryConfig?.();
     currentCountryId = id;
     config.country = id;
     try {
@@ -108,6 +111,8 @@ export function initNavigation({ config, refreshBindings, rerender, onLayout }) 
       /* ignore - localStorage blocked */
     }
     applyCountryVisuals(getCountry());
+    /* Load per-country physics config for the incoming country */
+    initTweakpane.applyCountryConfig?.(id);
     rerender();
   }
 
@@ -195,6 +200,7 @@ export function initNavigation({ config, refreshBindings, rerender, onLayout }) 
 
   /* ── Apply initial country visuals at boot ── */
   applyCountryVisuals(getCountry());
+  initTweakpane.applyCountryConfig?.(currentCountryId);
 
   /* ── Side button click listeners ── */
   document.getElementById("btnLeft")?.addEventListener("click", () => {
